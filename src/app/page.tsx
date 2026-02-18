@@ -35,11 +35,24 @@ const statusStyles: Record<string, string> = {
   cancelled: "bg-rose-100 text-rose-800 border-rose-200",
 };
 
+const statusLabels: Record<string, string> = {
+  pending: "قيد الانتظار",
+  accepted: "تم القبول",
+  delivering: "قيد التوصيل",
+  delivered: "تم التسليم",
+  cancelled: "ملغي",
+};
+
+function formatStatus(value: string | null | undefined): string {
+  if (!value) return "-";
+  return statusLabels[value] ?? value;
+}
+
 const payoutLabels: Record<string, string> = {
-  card: "Bank Card",
-  wallet: "Local Wallet",
-  cash: "Cash",
-  bank_transfer: "Bank Transfer",
+  card: "بطاقة مصرفية",
+  wallet: "محفظة محلية",
+  cash: "نقداً",
+  bank_transfer: "حوالة مصرفية",
 };
 
 function formatPayout(value: string | null | undefined): string {
@@ -108,7 +121,7 @@ export default function StorePanel() {
       for (const order of nextOrders) {
         const previous = prevMap.get(order.id);
         if (!previous) {
-          toast.success(`New order ${order.id.slice(0, 6)}...`);
+          toast.success(`طلب جديد ${order.id.slice(0, 6)}...`);
           flashOrder(order.id);
         } else if (previous.status !== order.status) {
           toast.custom(
@@ -121,7 +134,8 @@ export default function StorePanel() {
                 <div className="flex items-center gap-2 text-slate-900">
                   <BoltIcon className="h-4 w-4 text-indigo-500" />
                   <span>
-                    Order {order.id.slice(0, 6)}... is now {order.status}
+                    حالة الطلب {order.id.slice(0, 6)}... أصبحت{" "}
+                    {formatStatus(order.status)}
                   </span>
                 </div>
               </div>
@@ -153,7 +167,7 @@ export default function StorePanel() {
           if (!hasLoadedRef.current) hasLoadedRef.current = true;
         }
       } catch {
-        if (showToasts) toast.error("Failed to load orders");
+        if (showToasts) toast.error("تعذر تحميل الطلبات");
       }
     };
 
@@ -198,10 +212,10 @@ export default function StorePanel() {
   const createStore = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!storeName.trim()) {
-      toast.error("Store name is required");
+      toast.error("اسم المتجر مطلوب");
       return;
     }
-    const toastId = toast.loading("Creating store...");
+    const toastId = toast.loading("جاري إنشاء المتجر...");
     try {
       const res = await fetch(`${API_BASE}/stores`, {
         method: "POST",
@@ -212,26 +226,26 @@ export default function StorePanel() {
       if (data?.store?.id) {
         setStoreId(data.store.id);
         setAdminCode(data.store.admin_code);
-        toast.success("Store created", { id: toastId });
+        toast.success("تم إنشاء المتجر", { id: toastId });
       } else {
-        toast.error(data?.error ?? "Failed to create store", { id: toastId });
+        toast.error(data?.error ?? "فشل إنشاء المتجر", { id: toastId });
       }
     } catch {
-      toast.error("Network error", { id: toastId });
+      toast.error("خطأ في الشبكة", { id: toastId });
     }
   };
 
   const createDriver = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!storeId || !adminCode) {
-      toast.error("Store ID and Admin Code required");
+      toast.error("معرّف المتجر ورمز الإدارة مطلوبان");
       return;
     }
     if (!driverName.trim() || !driverPhone.trim()) {
-      toast.error("Driver name and phone required");
+      toast.error("اسم السائق ورقم الهاتف مطلوبان");
       return;
     }
-    const toastId = toast.loading("Generating driver...");
+    const toastId = toast.loading("جاري إنشاء السائق...");
 
     const generatedCode = generateCode();
 
@@ -253,13 +267,13 @@ export default function StorePanel() {
         setDriverCode(data.driver.secret_code);
         setDriverName("");
         setDriverPhone("");
-        toast.success("Driver created", { id: toastId });
-        toast("Code copied box ready", { icon: "?" });
+        toast.success("تم إنشاء السائق", { id: toastId });
+        toast("تم تجهيز صندوق نسخ الكود", { icon: "✨" });
       } else {
-        toast.error(data?.error ?? "Failed to create driver", { id: toastId });
+        toast.error(data?.error ?? "فشل إنشاء السائق", { id: toastId });
       }
     } catch {
-      toast.error("Network error", { id: toastId });
+      toast.error("خطأ في الشبكة", { id: toastId });
     }
   };
 
@@ -267,19 +281,19 @@ export default function StorePanel() {
     if (!driverCode) return;
     try {
       await navigator.clipboard.writeText(driverCode);
-      toast.success("Code copied");
+      toast.success("تم نسخ الكود");
     } catch {
-      toast.error("Unable to copy");
+      toast.error("تعذر النسخ");
     }
   };
 
   const createOrder = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!storeId || !adminCode) {
-      toast.error("Store ID and Admin Code required");
+      toast.error("معرّف المتجر ورمز الإدارة مطلوبان");
       return;
     }
-    const toastId = toast.loading("Creating order...");
+    const toastId = toast.loading("جاري إنشاء الطلب...");
 
     const formData = new FormData(e.currentTarget);
     const payload = {
@@ -305,12 +319,12 @@ export default function StorePanel() {
       const data = await res.json();
       if (data?.order?.id) {
         e.currentTarget.reset();
-        toast.success("Order created", { id: toastId });
+        toast.success("تم إنشاء الطلب", { id: toastId });
       } else {
-        toast.error(data?.error ?? "Failed to create order", { id: toastId });
+        toast.error(data?.error ?? "فشل إنشاء الطلب", { id: toastId });
       }
     } catch {
-      toast.error("Network error", { id: toastId });
+      toast.error("خطأ في الشبكة", { id: toastId });
     }
   };
 
@@ -324,24 +338,29 @@ export default function StorePanel() {
               <Image src="/logo.png" alt="NOVA MAX" width={48} height={48} />
             </div>
             <div>
-              <p className="text-xs uppercase tracking-[0.35em] text-slate-400">
-                Logistics Control
+              <p className="text-xs tracking-[0.25em] text-slate-400">
+                لوحة التحكم اللوجستية
               </p>
-              <h1 className="text-3xl font-semibold tracking-tight">NOVA MAX</h1>
+              <h1 className="text-3xl font-semibold tracking-tight">
+                نوفا ماكس
+              </h1>
             </div>
           </div>
           <div className="grid grid-cols-2 gap-3 text-xs md:flex md:items-center">
             <div className="rounded-full border border-slate-800 bg-slate-900 px-4 py-2">
-              Total <span className="ml-2 font-semibold">{stats.total}</span>
+              الإجمالي <span className="ml-2 font-semibold">{stats.total}</span>
             </div>
             <div className="rounded-full border border-slate-800 bg-slate-900 px-4 py-2">
-              Pending <span className="ml-2 font-semibold">{stats.pending}</span>
+              قيد الانتظار{" "}
+              <span className="ml-2 font-semibold">{stats.pending}</span>
             </div>
             <div className="rounded-full border border-slate-800 bg-slate-900 px-4 py-2">
-              Delivering <span className="ml-2 font-semibold">{stats.delivering}</span>
+              قيد التوصيل{" "}
+              <span className="ml-2 font-semibold">{stats.delivering}</span>
             </div>
             <div className="rounded-full border border-slate-800 bg-slate-900 px-4 py-2">
-              Delivered <span className="ml-2 font-semibold">{stats.delivered}</span>
+              تم التسليم{" "}
+              <span className="ml-2 font-semibold">{stats.delivered}</span>
             </div>
           </div>
         </header>
@@ -350,9 +369,9 @@ export default function StorePanel() {
           <section className="rounded-3xl border border-slate-800 bg-slate-900/70 p-6 shadow-lg">
             <div className="flex items-center justify-between">
               <div>
-                <h2 className="text-lg font-semibold">Store Identity</h2>
+                <h2 className="text-lg font-semibold">هوية المتجر</h2>
                 <p className="mt-1 text-sm text-slate-400">
-                  Keep store credentials ready for every action.
+                  احتفظ ببيانات المتجر جاهزة لكل عملية.
                 </p>
               </div>
               <ArrowPathIcon className="h-5 w-5 text-slate-500" />
@@ -360,13 +379,13 @@ export default function StorePanel() {
             <div className="mt-5 grid gap-3">
               <input
                 className="h-11 rounded-xl border border-slate-800 bg-slate-950 px-4 text-sm text-slate-100 outline-none focus:border-slate-600"
-                placeholder="Store ID"
+                placeholder="معرّف المتجر"
                 value={storeId}
                 onChange={(e) => setStoreId(e.target.value)}
               />
               <input
                 className="h-11 rounded-xl border border-slate-800 bg-slate-950 px-4 text-sm text-slate-100 outline-none focus:border-slate-600"
-                placeholder="Admin Code"
+                placeholder="رمز الإدارة"
                 value={adminCode}
                 onChange={(e) => setAdminCode(e.target.value)}
               />
@@ -375,12 +394,12 @@ export default function StorePanel() {
             <form onSubmit={createStore} className="mt-5 grid gap-3">
               <input
                 className="h-11 rounded-xl border border-slate-800 bg-slate-950 px-4 text-sm text-slate-100 outline-none focus:border-slate-600"
-                placeholder="Store Name"
+                placeholder="اسم المتجر"
                 value={storeName}
                 onChange={(e) => setStoreName(e.target.value)}
               />
               <button className="h-11 rounded-xl bg-indigo-500 text-sm font-semibold text-white transition hover:bg-indigo-400">
-                Create Store
+                إنشاء المتجر
               </button>
             </form>
           </section>
@@ -388,33 +407,33 @@ export default function StorePanel() {
           <section className="rounded-3xl border border-slate-800 bg-slate-900/70 p-6 shadow-lg">
             <div className="flex items-center gap-2 text-lg font-semibold">
               <CheckCircleIcon className="h-5 w-5 text-orange-400" />
-              Driver Access
+              مدخل السائق
             </div>
             <p className="mt-1 text-sm text-slate-400">
-              Generate a secure driver code automatically.
+              توليد كود سري آمن للسائق تلقائياً.
             </p>
             <form onSubmit={createDriver} className="mt-5 grid gap-3">
               <input
                 className="h-11 rounded-xl border border-slate-800 bg-slate-950 px-4 text-sm text-slate-100 outline-none focus:border-slate-600"
-                placeholder="Driver Name"
+                placeholder="اسم السائق"
                 value={driverName}
                 onChange={(e) => setDriverName(e.target.value)}
               />
               <input
                 className="h-11 rounded-xl border border-slate-800 bg-slate-950 px-4 text-sm text-slate-100 outline-none focus:border-slate-600"
-                placeholder="Driver Phone"
+                placeholder="هاتف السائق"
                 value={driverPhone}
                 onChange={(e) => setDriverPhone(e.target.value)}
               />
               <button className="h-11 rounded-xl bg-orange-500 text-sm font-semibold text-white transition hover:bg-orange-400">
-                Generate & Create Driver
+                توليد وإنشاء السائق
               </button>
             </form>
 
             {driverCode && (
               <div className="mt-5 rounded-2xl border border-orange-500/30 bg-orange-500/10 p-4">
-                <p className="text-xs uppercase tracking-[0.2em] text-orange-200">
-                  Driver Secret Code
+                <p className="text-xs tracking-[0.2em] text-orange-200">
+                  الكود السري للسائق
                 </p>
                 <div className="mt-2 flex items-center justify-between gap-3">
                   <span className="text-2xl font-semibold text-orange-100">
@@ -426,7 +445,7 @@ export default function StorePanel() {
                     type="button"
                   >
                     <ClipboardIcon className="h-4 w-4" />
-                    Copy
+                    نسخ
                   </button>
                 </div>
               </div>
@@ -437,31 +456,31 @@ export default function StorePanel() {
         <section className="mt-6 rounded-3xl border border-slate-800 bg-slate-900/70 p-6 shadow-lg">
           <div className="flex items-center gap-2 text-lg font-semibold">
             <BoltIcon className="h-5 w-5 text-indigo-400" />
-            Create Order
+            إنشاء طلب
           </div>
           <form onSubmit={createOrder} className="mt-5 grid gap-3 md:grid-cols-2">
             <input
               name="customer_name"
               className="h-11 rounded-xl border border-slate-800 bg-slate-950 px-4 text-sm text-slate-100 outline-none focus:border-slate-600"
-              placeholder="Customer Name"
+              placeholder="اسم العميل"
               required
             />
             <input
               name="receiver_name"
               className="h-11 rounded-xl border border-slate-800 bg-slate-950 px-4 text-sm text-slate-100 outline-none focus:border-slate-600"
-              placeholder="Recipient Name"
+              placeholder="اسم المستلم"
               required
             />
             <input
               name="customer_location_text"
               className="h-11 rounded-xl border border-slate-800 bg-slate-950 px-4 text-sm text-slate-100 outline-none focus:border-slate-600"
-              placeholder="Order Location"
+              placeholder="موقع الطلب"
               required
             />
             <input
               name="order_type"
               className="h-11 rounded-xl border border-slate-800 bg-slate-950 px-4 text-sm text-slate-100 outline-none focus:border-slate-600"
-              placeholder="Order Type"
+              placeholder="نوع الطلب"
               required
             />
             <input
@@ -469,14 +488,14 @@ export default function StorePanel() {
               type="number"
               step="0.01"
               className="h-11 rounded-xl border border-slate-800 bg-slate-950 px-4 text-sm text-slate-100 outline-none focus:border-slate-600"
-              placeholder="Order Price"
+              placeholder="سعر الطلب"
             />
             <input
               name="delivery_fee"
               type="number"
               step="0.01"
               className="h-11 rounded-xl border border-slate-800 bg-slate-950 px-4 text-sm text-slate-100 outline-none focus:border-slate-600"
-              placeholder="Delivery Fee"
+              placeholder="رسوم التوصيل"
             />
             <select
               name="payout_method"
@@ -485,40 +504,40 @@ export default function StorePanel() {
               required
             >
               <option value="" disabled>
-                Driver Payout Method
+                طريقة دفع مستحقات السائق
               </option>
-              <option value="card">Bank Card</option>
-              <option value="wallet">Local Wallet</option>
-              <option value="cash">Cash</option>
-              <option value="bank_transfer">Bank Transfer</option>
+              <option value="card">بطاقة مصرفية</option>
+              <option value="wallet">محفظة محلية</option>
+              <option value="cash">نقداً</option>
+              <option value="bank_transfer">حوالة مصرفية</option>
             </select>
             <input
               name="driver_id"
               className="h-11 rounded-xl border border-slate-800 bg-slate-950 px-4 text-sm text-slate-100 outline-none focus:border-slate-600"
-              placeholder="Driver ID (optional)"
+              placeholder="معرّف السائق (اختياري)"
             />
             <button className="h-11 rounded-xl bg-indigo-500 text-sm font-semibold text-white transition hover:bg-indigo-400 md:col-span-2">
-              Create Order
+              إنشاء الطلب
             </button>
           </form>
         </section>
 
         <section className="mt-6 rounded-3xl border border-slate-800 bg-slate-900/70 p-6 shadow-lg">
           <div className="flex items-center gap-2 text-lg font-semibold">
-            Live Orders
+            الطلبات المباشرة
           </div>
           <div className="mt-4 overflow-x-auto">
-            <table className="w-full text-left text-sm">
+            <table className="w-full text-right text-sm">
               <thead className="text-xs uppercase tracking-[0.2em] text-slate-400">
                 <tr>
-                  <th className="py-2">Order</th>
-                  <th>Customer</th>
-                  <th>Recipient</th>
-                  <th>Type</th>
-                  <th>Driver</th>
-                  <th>Status</th>
-                  <th>Payout</th>
-                  <th className="text-right">Fee</th>
+                  <th className="py-2">الطلب</th>
+                  <th>العميل</th>
+                  <th>المستلم</th>
+                  <th>النوع</th>
+                  <th>السائق</th>
+                  <th>الحالة</th>
+                  <th>الدفع</th>
+                  <th className="text-left">الرسوم</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-800">
@@ -547,13 +566,13 @@ export default function StorePanel() {
                           "border-slate-700 bg-slate-800 text-slate-300"
                         }`}
                       >
-                        {order.status ?? "unknown"}
+                        {formatStatus(order.status)}
                       </span>
                     </td>
                     <td className="text-slate-300">
                       {formatPayout(order.payout_method)}
                     </td>
-                    <td className="text-right text-slate-200">
+                    <td className="text-left text-slate-200">
                       {typeof order.delivery_fee === "number"
                         ? order.delivery_fee.toFixed(2)
                         : "-"}
@@ -563,7 +582,7 @@ export default function StorePanel() {
                 {orders.length === 0 && (
                   <tr>
                     <td colSpan={8} className="py-6 text-center text-slate-500">
-                      No orders yet.
+                      لا توجد طلبات بعد.
                     </td>
                   </tr>
                 )}
