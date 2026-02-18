@@ -28,7 +28,7 @@ const statusStyles: Record<string, string> = {
   pending: "bg-amber-100 text-amber-800 border-amber-200",
   accepted: "bg-sky-100 text-sky-800 border-sky-200",
   delivering: "bg-indigo-100 text-indigo-800 border-indigo-200",
-  delivered: "bg-emerald-100 text-emerald-800 border-emerald-200",
+  delivered: "bg-orange-100 text-orange-800 border-orange-200",
   cancelled: "bg-rose-100 text-rose-800 border-rose-200",
 };
 
@@ -369,7 +369,7 @@ export default function StorePanel() {
 
           <section className="rounded-3xl border border-slate-800 bg-slate-900/70 p-6 shadow-lg">
             <div className="flex items-center gap-2 text-lg font-semibold">
-              <CheckCircleIcon className="h-5 w-5 text-emerald-400" />
+              <CheckCircleIcon className="h-5 w-5 text-orange-400" />
               Driver Access
             </div>
             <p className="mt-1 text-sm text-slate-400">
@@ -388,23 +388,23 @@ export default function StorePanel() {
                 value={driverPhone}
                 onChange={(e) => setDriverPhone(e.target.value)}
               />
-              <button className="h-11 rounded-xl bg-emerald-500 text-sm font-semibold text-white transition hover:bg-emerald-400">
+              <button className="h-11 rounded-xl bg-orange-500 text-sm font-semibold text-white transition hover:bg-orange-400">
                 Generate & Create Driver
               </button>
             </form>
 
             {driverCode && (
-              <div className="mt-5 rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-4">
-                <p className="text-xs uppercase tracking-[0.2em] text-emerald-200">
+              <div className="mt-5 rounded-2xl border border-orange-500/30 bg-orange-500/10 p-4">
+                <p className="text-xs uppercase tracking-[0.2em] text-orange-200">
                   Driver Secret Code
                 </p>
                 <div className="mt-2 flex items-center justify-between gap-3">
-                  <span className="text-2xl font-semibold text-emerald-100">
+                  <span className="text-2xl font-semibold text-orange-100">
                     {driverCode}
                   </span>
                   <button
                     onClick={copyCode}
-                    className="inline-flex items-center gap-2 rounded-xl border border-emerald-400/40 px-3 py-2 text-xs text-emerald-100 transition hover:bg-emerald-500/20"
+                    className="inline-flex items-center gap-2 rounded-xl border border-orange-400/40 px-3 py-2 text-xs text-orange-100 transition hover:bg-orange-500/20"
                     type="button"
                   >
                     <ClipboardIcon className="h-4 w-4" />
