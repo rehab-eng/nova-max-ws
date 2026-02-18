@@ -68,9 +68,16 @@ export default function StorePanel() {
   const [storeId, setStoreId] = useState("");
   const [adminCode, setAdminCode] = useState("");
   const [storeName, setStoreName] = useState("");
+  const [storeLabel, setStoreLabel] = useState<string | null>(null);
   const [driverName, setDriverName] = useState("");
   const [driverPhone, setDriverPhone] = useState("");
+  const [driverPhotoUrl, setDriverPhotoUrl] = useState("");
   const [driverCode, setDriverCode] = useState<string | null>(null);
+  const [walletDriverId, setWalletDriverId] = useState("");
+  const [walletAmount, setWalletAmount] = useState("");
+  const [walletMethod, setWalletMethod] = useState("wallet");
+  const [walletNote, setWalletNote] = useState("");
+  const [deleteDriverId, setDeleteDriverId] = useState("");
   const [orders, setOrders] = useState<Order[]>([]);
   const [flashIds, setFlashIds] = useState<Set<string>>(new Set());
 
@@ -90,6 +97,34 @@ export default function StorePanel() {
   useEffect(() => {
     localStorage.setItem("nova.admin_code", adminCode);
   }, [adminCode]);
+
+  const resolveStore = async (silent = true) => {
+    if (!adminCode) return;
+    const toastId = silent ? null : toast.loading("جاري ربط المتجر...");
+    try {
+      const res = await fetch(`${API_BASE}/stores/by-admin`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-Admin-Code": adminCode },
+        body: JSON.stringify({ admin_code: adminCode }),
+      });
+      const data = await res.json();
+      if (data?.store?.id) {
+        setStoreId(data.store.id);
+        setStoreLabel(data.store.name ?? null);
+        if (toastId) toast.success("تم ربط المتجر", { id: toastId });
+      } else if (toastId) {
+        toast.error(data?.error ?? "تعذر ربط المتجر", { id: toastId });
+      }
+    } catch {
+      if (toastId) toast.error("خطأ في الشبكة", { id: toastId });
+    }
+  };
+
+  useEffect(() => {
+    if (adminCode && !storeId) {
+      resolveStore(true);
+    }
+  }, [adminCode, storeId]);
 
   const flashOrder = (id: string) => {
     setFlashIds((prev) => {
@@ -152,15 +187,16 @@ export default function StorePanel() {
   };
 
   useEffect(() => {
-    if (!storeId) return;
+    if (!storeId && !adminCode) return;
     let active = true;
     let source: EventSource | null = null;
+    const query = storeId
+      ? `store_id=${encodeURIComponent(storeId)}`
+      : `admin_code=${encodeURIComponent(adminCode)}`;
 
     const fetchOrders = async (showToasts: boolean) => {
       try {
-        const res = await fetch(
-          `${API_BASE}/orders?store_id=${encodeURIComponent(storeId)}`
-        );
+        const res = await fetch(`${API_BASE}/orders?${query}`);
         const data = await res.json();
         if (active && data?.orders) {
           applyOrders(data.orders, showToasts && hasLoadedRef.current);
@@ -172,9 +208,7 @@ export default function StorePanel() {
     };
 
     const startSSE = () => {
-      source = new EventSource(
-        `${API_BASE}/orders/stream?store_id=${encodeURIComponent(storeId)}`
-      );
+      source = new EventSource(`${API_BASE}/orders/stream?${query}`);
       source.addEventListener("orders", (event) => {
         if (!active) return;
         const list = JSON.parse((event as MessageEvent).data) as Order[];
@@ -199,7 +233,7 @@ export default function StorePanel() {
       source?.close();
       window.clearInterval(poll);
     };
-  }, [storeId]);
+  }, [storeId, adminCode]);
 
   const stats = useMemo(() => {
     const total = orders.length;
@@ -226,6 +260,7 @@ export default function StorePanel() {
       if (data?.store?.id) {
         setStoreId(data.store.id);
         setAdminCode(data.store.admin_code);
+        setStoreLabel(data.store.name ?? null);
         toast.success("تم إنشاء المتجر", { id: toastId });
       } else {
         toast.error(data?.error ?? "فشل إنشاء المتجر", { id: toastId });
@@ -237,8 +272,8 @@ export default function StorePanel() {
 
   const createDriver = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!storeId || !adminCode) {
-      toast.error("معرّف المتجر ورمز الإدارة مطلوبان");
+    if (!adminCode) {
+      toast.error("رمز الإدارة مطلوب");
       return;
     }
     if (!driverName.trim() || !driverPhone.trim()) {
@@ -250,16 +285,19 @@ export default function StorePanel() {
     const generatedCode = generateCode();
 
     try {
+      const payload: Record<string, unknown> = {
+        admin_code: adminCode,
+        name: driverName,
+        phone: driverPhone,
+        secret_code: generatedCode,
+      };
+      if (driverPhotoUrl) payload.photo_url = driverPhotoUrl;
+      if (storeId) payload.store_id = storeId;
+
       const res = await fetch(`${API_BASE}/drivers`, {
         method: "POST",
         headers: { "Content-Type": "application/json", "X-Admin-Code": adminCode },
-        body: JSON.stringify({
-          store_id: storeId,
-          admin_code: adminCode,
-          name: driverName,
-          phone: driverPhone,
-          secret_code: generatedCode,
-        }),
+        body: JSON.stringify(payload),
       });
 
       const data = await res.json();
@@ -267,6 +305,7 @@ export default function StorePanel() {
         setDriverCode(data.driver.secret_code);
         setDriverName("");
         setDriverPhone("");
+        setDriverPhotoUrl("");
         toast.success("تم إنشاء السائق", { id: toastId });
         toast("تم تجهيز صندوق نسخ الكود", { icon: "✨" });
       } else {
@@ -287,17 +326,100 @@ export default function StorePanel() {
     }
   };
 
+  const updateWallet = async (type: "credit" | "debit") => {
+    if (!adminCode) {
+      toast.error("رمز الإدارة مطلوب");
+      return;
+    }
+    if (!walletDriverId.trim()) {
+      toast.error("معرّف السائق مطلوب");
+      return;
+    }
+    const amountValue = Number(walletAmount);
+    if (!Number.isFinite(amountValue) || amountValue <= 0) {
+      toast.error("أدخل مبلغاً صحيحاً");
+      return;
+    }
+
+    const toastId = toast.loading(
+      type === "credit" ? "جاري شحن المحفظة..." : "جاري سحب المبلغ..."
+    );
+
+    try {
+      const res = await fetch(
+        `${API_BASE}/drivers/${encodeURIComponent(
+          walletDriverId
+        )}/wallet/${type}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "X-Admin-Code": adminCode },
+          body: JSON.stringify({
+            admin_code: adminCode,
+            amount: amountValue,
+            method: walletMethod,
+            note: walletNote,
+          }),
+        }
+      );
+      const data = await res.json();
+      if (data?.ok) {
+        toast.success("تم تحديث المحفظة", { id: toastId });
+        setWalletAmount("");
+        setWalletNote("");
+      } else {
+        toast.error(data?.error ?? "فشل تحديث المحفظة", { id: toastId });
+      }
+    } catch {
+      toast.error("خطأ في الشبكة", { id: toastId });
+    }
+  };
+
+  const removeDriver = async () => {
+    if (!adminCode) {
+      toast.error("رمز الإدارة مطلوب");
+      return;
+    }
+    if (!deleteDriverId.trim()) {
+      toast.error("معرّف السائق مطلوب");
+      return;
+    }
+    const confirmed = window.confirm(
+      "سيتم حذف السائق نهائياً وإلغاء ربطه بالطلبات السابقة. هل تريد المتابعة؟"
+    );
+    if (!confirmed) return;
+
+    const toastId = toast.loading("جاري حذف السائق...");
+    try {
+      const res = await fetch(
+        `${API_BASE}/drivers/${encodeURIComponent(deleteDriverId)}`,
+        {
+          method: "DELETE",
+          headers: { "Content-Type": "application/json", "X-Admin-Code": adminCode },
+          body: JSON.stringify({ admin_code: adminCode }),
+        }
+      );
+      const data = await res.json();
+      if (data?.ok) {
+        toast.success("تم حذف السائق", { id: toastId });
+        setDeleteDriverId("");
+      } else {
+        toast.error(data?.error ?? "فشل حذف السائق", { id: toastId });
+      }
+    } catch {
+      toast.error("خطأ في الشبكة", { id: toastId });
+    }
+  };
+
   const createOrder = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (!storeId || !adminCode) {
-      toast.error("معرّف المتجر ورمز الإدارة مطلوبان");
+    if (!adminCode) {
+      toast.error("رمز الإدارة مطلوب");
       return;
     }
     const toastId = toast.loading("جاري إنشاء الطلب...");
 
     const formData = new FormData(e.currentTarget);
-    const payload = {
-      store_id: storeId,
+    const payload: Record<string, unknown> = {
       admin_code: adminCode,
       customer_name: formData.get("customer_name"),
       customer_location_text: formData.get("customer_location_text"),
@@ -308,6 +430,7 @@ export default function StorePanel() {
       delivery_fee: formData.get("delivery_fee"),
       driver_id: formData.get("driver_id"),
     };
+    if (storeId) payload.store_id = storeId;
 
     try {
       const res = await fetch(`${API_BASE}/orders`, {
@@ -329,10 +452,10 @@ export default function StorePanel() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100">
+    <div className="min-h-screen bg-[#05070f] text-slate-100 [background-image:radial-gradient(circle_at_top,rgba(255,255,255,0.08),transparent_55%),radial-gradient(circle_at_bottom,rgba(255,153,0,0.12),transparent_55%)]">
       <Toaster position="top-right" />
       <div className="mx-auto max-w-6xl px-6 py-10">
-        <header className="flex flex-col gap-6 rounded-3xl border border-slate-800 bg-gradient-to-br from-slate-900 via-slate-950 to-slate-900 p-6 shadow-xl md:flex-row md:items-center md:justify-between">
+        <header className="flex flex-col gap-6 rounded-3xl border border-white/10 bg-white/5 p-6 shadow-[0_26px_70px_-45px_rgba(0,0,0,0.9)] backdrop-blur-xl md:flex-row md:items-center md:justify-between">
           <div className="flex items-center gap-4">
             <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-white">
               <Image src="/logo.png" alt="NOVA MAX" width={48} height={48} />
@@ -347,18 +470,18 @@ export default function StorePanel() {
             </div>
           </div>
           <div className="grid grid-cols-2 gap-3 text-xs md:flex md:items-center">
-            <div className="rounded-full border border-slate-800 bg-slate-900 px-4 py-2">
+            <div className="rounded-full border border-white/15 bg-white/5 px-4 py-2 backdrop-blur">
               الإجمالي <span className="ml-2 font-semibold">{stats.total}</span>
             </div>
-            <div className="rounded-full border border-slate-800 bg-slate-900 px-4 py-2">
+            <div className="rounded-full border border-white/15 bg-white/5 px-4 py-2 backdrop-blur">
               قيد الانتظار{" "}
               <span className="ml-2 font-semibold">{stats.pending}</span>
             </div>
-            <div className="rounded-full border border-slate-800 bg-slate-900 px-4 py-2">
+            <div className="rounded-full border border-white/15 bg-white/5 px-4 py-2 backdrop-blur">
               قيد التوصيل{" "}
               <span className="ml-2 font-semibold">{stats.delivering}</span>
             </div>
-            <div className="rounded-full border border-slate-800 bg-slate-900 px-4 py-2">
+            <div className="rounded-full border border-white/15 bg-white/5 px-4 py-2 backdrop-blur">
               تم التسليم{" "}
               <span className="ml-2 font-semibold">{stats.delivered}</span>
             </div>
@@ -366,7 +489,7 @@ export default function StorePanel() {
         </header>
 
         <div className="mt-8 grid gap-6 lg:grid-cols-[1.2fr_1fr]">
-          <section className="rounded-3xl border border-slate-800 bg-slate-900/70 p-6 shadow-lg">
+          <section className="rounded-3xl border border-white/10 bg-white/5 p-6 shadow-[0_24px_60px_-40px_rgba(0,0,0,0.85)] backdrop-blur-xl">
             <div className="flex items-center justify-between">
               <div>
                 <h2 className="text-lg font-semibold">هوية المتجر</h2>
@@ -379,17 +502,27 @@ export default function StorePanel() {
             <div className="mt-5 grid gap-3">
               <input
                 className="h-11 rounded-xl border border-slate-800 bg-slate-950 px-4 text-sm text-slate-100 outline-none focus:border-slate-600"
-                placeholder="معرّف المتجر"
-                value={storeId}
-                onChange={(e) => setStoreId(e.target.value)}
-              />
-              <input
-                className="h-11 rounded-xl border border-slate-800 bg-slate-950 px-4 text-sm text-slate-100 outline-none focus:border-slate-600"
                 placeholder="رمز الإدارة"
                 value={adminCode}
                 onChange={(e) => setAdminCode(e.target.value)}
               />
+              <button
+                type="button"
+                onClick={() => resolveStore(false)}
+                className="h-11 rounded-xl border border-slate-700 bg-slate-900 text-sm font-semibold text-slate-200 transition hover:border-slate-500"
+              >
+                ربط المتجر بالكود
+              </button>
             </div>
+
+            {storeId && (
+              <div className="mt-4 rounded-2xl border border-slate-800 bg-slate-950 px-4 py-3 text-sm text-slate-300">
+                <p className="text-xs text-slate-500">المتجر الحالي</p>
+                <p className="mt-1 font-semibold text-slate-100">
+                  {storeLabel ?? "تم ربط المتجر"}
+                </p>
+              </div>
+            )}
 
             <form onSubmit={createStore} className="mt-5 grid gap-3">
               <input
@@ -404,7 +537,7 @@ export default function StorePanel() {
             </form>
           </section>
 
-          <section className="rounded-3xl border border-slate-800 bg-slate-900/70 p-6 shadow-lg">
+          <section className="rounded-3xl border border-white/10 bg-white/5 p-6 shadow-[0_24px_60px_-40px_rgba(0,0,0,0.85)] backdrop-blur-xl">
             <div className="flex items-center gap-2 text-lg font-semibold">
               <CheckCircleIcon className="h-5 w-5 text-orange-400" />
               مدخل السائق
@@ -424,6 +557,12 @@ export default function StorePanel() {
                 placeholder="هاتف السائق"
                 value={driverPhone}
                 onChange={(e) => setDriverPhone(e.target.value)}
+              />
+              <input
+                className="h-11 rounded-xl border border-slate-800 bg-slate-950 px-4 text-sm text-slate-100 outline-none focus:border-slate-600"
+                placeholder="رابط صورة السائق (اختياري)"
+                value={driverPhotoUrl}
+                onChange={(e) => setDriverPhotoUrl(e.target.value)}
               />
               <button className="h-11 rounded-xl bg-orange-500 text-sm font-semibold text-white transition hover:bg-orange-400">
                 توليد وإنشاء السائق
@@ -453,7 +592,90 @@ export default function StorePanel() {
           </section>
         </div>
 
-        <section className="mt-6 rounded-3xl border border-slate-800 bg-slate-900/70 p-6 shadow-lg">
+        <div className="mt-6 grid gap-6 lg:grid-cols-2">
+          <section className="rounded-3xl border border-white/10 bg-white/5 p-6 shadow-[0_24px_60px_-40px_rgba(0,0,0,0.85)] backdrop-blur-xl">
+            <div className="flex items-center gap-2 text-lg font-semibold">
+              إدارة محفظة السائق
+            </div>
+            <p className="mt-1 text-sm text-slate-400">
+              شحن أو سحب مستحقات السائق حسب طريقة الدفع.
+            </p>
+            <div className="mt-4 grid gap-3">
+              <input
+                className="h-11 rounded-xl border border-slate-800 bg-slate-950 px-4 text-sm text-slate-100 outline-none focus:border-slate-600"
+                placeholder="معرّف السائق"
+                value={walletDriverId}
+                onChange={(e) => setWalletDriverId(e.target.value)}
+              />
+              <input
+                type="number"
+                step="0.01"
+                className="h-11 rounded-xl border border-slate-800 bg-slate-950 px-4 text-sm text-slate-100 outline-none focus:border-slate-600"
+                placeholder="المبلغ"
+                value={walletAmount}
+                onChange={(e) => setWalletAmount(e.target.value)}
+              />
+              <select
+                className="h-11 rounded-xl border border-slate-800 bg-slate-950 px-4 text-sm text-slate-100 outline-none focus:border-slate-600"
+                value={walletMethod}
+                onChange={(e) => setWalletMethod(e.target.value)}
+              >
+                <option value="wallet">محفظة محلية</option>
+                <option value="card">بطاقة مصرفية</option>
+                <option value="cash">نقداً</option>
+                <option value="bank_transfer">حوالة مصرفية</option>
+              </select>
+              <input
+                className="h-11 rounded-xl border border-slate-800 bg-slate-950 px-4 text-sm text-slate-100 outline-none focus:border-slate-600"
+                placeholder="ملاحظة (اختياري)"
+                value={walletNote}
+                onChange={(e) => setWalletNote(e.target.value)}
+              />
+              <div className="grid gap-3 sm:grid-cols-2">
+                <button
+                  type="button"
+                  onClick={() => updateWallet("credit")}
+                  className="h-11 rounded-xl bg-orange-500 text-sm font-semibold text-white transition hover:bg-orange-400"
+                >
+                  شحن المحفظة
+                </button>
+                <button
+                  type="button"
+                  onClick={() => updateWallet("debit")}
+                  className="h-11 rounded-xl border border-rose-400/40 bg-rose-500/10 text-sm font-semibold text-rose-100 transition hover:bg-rose-500/20"
+                >
+                  سحب المبلغ
+                </button>
+              </div>
+            </div>
+          </section>
+
+          <section className="rounded-3xl border border-white/10 bg-white/5 p-6 shadow-[0_24px_60px_-40px_rgba(0,0,0,0.85)] backdrop-blur-xl">
+            <div className="flex items-center gap-2 text-lg font-semibold">
+              حذف السائق نهائياً
+            </div>
+            <p className="mt-1 text-sm text-slate-400">
+              استخدم هذه الخاصية عند مغادرة السائق للعمل.
+            </p>
+            <div className="mt-4 grid gap-3">
+              <input
+                className="h-11 rounded-xl border border-slate-800 bg-slate-950 px-4 text-sm text-slate-100 outline-none focus:border-slate-600"
+                placeholder="معرّف السائق"
+                value={deleteDriverId}
+                onChange={(e) => setDeleteDriverId(e.target.value)}
+              />
+              <button
+                type="button"
+                onClick={removeDriver}
+                className="h-11 rounded-xl border border-rose-400/40 bg-rose-500/10 text-sm font-semibold text-rose-100 transition hover:bg-rose-500/20"
+              >
+                حذف السائق نهائياً
+              </button>
+            </div>
+          </section>
+        </div>
+
+        <section className="mt-6 rounded-3xl border border-white/10 bg-white/5 p-6 shadow-[0_24px_60px_-40px_rgba(0,0,0,0.85)] backdrop-blur-xl">
           <div className="flex items-center gap-2 text-lg font-semibold">
             <BoltIcon className="h-5 w-5 text-indigo-400" />
             إنشاء طلب
@@ -522,7 +744,7 @@ export default function StorePanel() {
           </form>
         </section>
 
-        <section className="mt-6 rounded-3xl border border-slate-800 bg-slate-900/70 p-6 shadow-lg">
+        <section className="mt-6 rounded-3xl border border-white/10 bg-white/5 p-6 shadow-[0_24px_60px_-40px_rgba(0,0,0,0.85)] backdrop-blur-xl">
           <div className="flex items-center gap-2 text-lg font-semibold">
             الطلبات المباشرة
           </div>
