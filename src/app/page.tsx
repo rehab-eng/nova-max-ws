@@ -18,6 +18,9 @@ type Order = {
   driver_id: string | null;
   customer_name: string | null;
   customer_location_text: string | null;
+  order_type: string | null;
+  receiver_name: string | null;
+  payout_method: string | null;
   price: number | null;
   delivery_fee: number | null;
   status: string | null;
@@ -31,6 +34,18 @@ const statusStyles: Record<string, string> = {
   delivered: "bg-orange-100 text-orange-800 border-orange-200",
   cancelled: "bg-rose-100 text-rose-800 border-rose-200",
 };
+
+const payoutLabels: Record<string, string> = {
+  card: "Bank Card",
+  wallet: "Local Wallet",
+  cash: "Cash",
+  bank_transfer: "Bank Transfer",
+};
+
+function formatPayout(value: string | null | undefined): string {
+  if (!value) return "-";
+  return payoutLabels[value] ?? value;
+}
 
 function generateCode(): string {
   return Math.floor(100000 + Math.random() * 900000).toString();
@@ -272,6 +287,9 @@ export default function StorePanel() {
       admin_code: adminCode,
       customer_name: formData.get("customer_name"),
       customer_location_text: formData.get("customer_location_text"),
+      order_type: formData.get("order_type"),
+      receiver_name: formData.get("receiver_name"),
+      payout_method: formData.get("payout_method"),
       price: formData.get("price"),
       delivery_fee: formData.get("delivery_fee"),
       driver_id: formData.get("driver_id"),
@@ -429,9 +447,21 @@ export default function StorePanel() {
               required
             />
             <input
+              name="receiver_name"
+              className="h-11 rounded-xl border border-slate-800 bg-slate-950 px-4 text-sm text-slate-100 outline-none focus:border-slate-600"
+              placeholder="Recipient Name"
+              required
+            />
+            <input
               name="customer_location_text"
               className="h-11 rounded-xl border border-slate-800 bg-slate-950 px-4 text-sm text-slate-100 outline-none focus:border-slate-600"
-              placeholder="Customer Location"
+              placeholder="Order Location"
+              required
+            />
+            <input
+              name="order_type"
+              className="h-11 rounded-xl border border-slate-800 bg-slate-950 px-4 text-sm text-slate-100 outline-none focus:border-slate-600"
+              placeholder="Order Type"
               required
             />
             <input
@@ -448,6 +478,20 @@ export default function StorePanel() {
               className="h-11 rounded-xl border border-slate-800 bg-slate-950 px-4 text-sm text-slate-100 outline-none focus:border-slate-600"
               placeholder="Delivery Fee"
             />
+            <select
+              name="payout_method"
+              className="h-11 rounded-xl border border-slate-800 bg-slate-950 px-4 text-sm text-slate-100 outline-none focus:border-slate-600"
+              defaultValue=""
+              required
+            >
+              <option value="" disabled>
+                Driver Payout Method
+              </option>
+              <option value="card">Bank Card</option>
+              <option value="wallet">Local Wallet</option>
+              <option value="cash">Cash</option>
+              <option value="bank_transfer">Bank Transfer</option>
+            </select>
             <input
               name="driver_id"
               className="h-11 rounded-xl border border-slate-800 bg-slate-950 px-4 text-sm text-slate-100 outline-none focus:border-slate-600"
@@ -469,8 +513,11 @@ export default function StorePanel() {
                 <tr>
                   <th className="py-2">Order</th>
                   <th>Customer</th>
+                  <th>Recipient</th>
+                  <th>Type</th>
                   <th>Driver</th>
                   <th>Status</th>
+                  <th>Payout</th>
                   <th className="text-right">Fee</th>
                 </tr>
               </thead>
@@ -488,6 +535,8 @@ export default function StorePanel() {
                       {order.id.slice(0, 8)}...
                     </td>
                     <td className="text-slate-200">{order.customer_name ?? "-"}</td>
+                    <td className="text-slate-300">{order.receiver_name ?? "-"}</td>
+                    <td className="text-slate-300">{order.order_type ?? "-"}</td>
                     <td className="text-slate-400">
                       {order.driver_id ? `${order.driver_id.slice(0, 8)}...` : "-"}
                     </td>
@@ -501,6 +550,9 @@ export default function StorePanel() {
                         {order.status ?? "unknown"}
                       </span>
                     </td>
+                    <td className="text-slate-300">
+                      {formatPayout(order.payout_method)}
+                    </td>
                     <td className="text-right text-slate-200">
                       {typeof order.delivery_fee === "number"
                         ? order.delivery_fee.toFixed(2)
@@ -510,7 +562,7 @@ export default function StorePanel() {
                 ))}
                 {orders.length === 0 && (
                   <tr>
-                    <td colSpan={5} className="py-6 text-center text-slate-500">
+                    <td colSpan={8} className="py-6 text-center text-slate-500">
                       No orders yet.
                     </td>
                   </tr>
