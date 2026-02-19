@@ -8,6 +8,11 @@ import {
   ClipboardIcon,
   BoltIcon,
   CheckCircleIcon,
+  Bars3Icon,
+  XMarkIcon,
+  Cog6ToothIcon,
+  LifebuoyIcon,
+  ArrowRightOnRectangleIcon,
 } from "@heroicons/react/24/outline";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE ?? "http://localhost:8787";
@@ -88,6 +93,7 @@ export default function StorePanel() {
   const [deleteDriverId, setDeleteDriverId] = useState("");
   const [orders, setOrders] = useState<Order[]>([]);
   const [flashIds, setFlashIds] = useState<Set<string>>(new Set());
+  const [menuOpen, setMenuOpen] = useState(false);
 
   const ordersRef = useRef<Order[]>([]);
   const hasLoadedRef = useRef(false);
@@ -105,6 +111,20 @@ export default function StorePanel() {
   useEffect(() => {
     localStorage.setItem("nova.admin_code", adminCode);
   }, [adminCode]);
+
+  const clearStore = () => {
+    localStorage.removeItem("nova.store_id");
+    localStorage.removeItem("nova.admin_code");
+    setStoreId("");
+    setAdminCode("");
+    setStoreLabel(null);
+  };
+
+  const scrollToSection = (id: string) => {
+    const el = document.getElementById(id);
+    if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+    setMenuOpen(false);
+  };
 
   const resolveStore = async (silent = true) => {
     if (!adminCode) return;
@@ -567,9 +587,115 @@ export default function StorePanel() {
   return (
     <div className="min-h-screen bg-[#f5f7ff] text-slate-900 [background-image:radial-gradient(circle_at_top,rgba(255,255,255,0.9),transparent_55%),radial-gradient(circle_at_bottom,rgba(186,230,253,0.65),transparent_55%)]">
       <Toaster position="top-right" />
+      {menuOpen && (
+        <div className="fixed inset-0 z-50 flex justify-end">
+          <button
+            type="button"
+            className="absolute inset-0 bg-black/20"
+            onClick={() => setMenuOpen(false)}
+            aria-label="إغلاق القائمة"
+          />
+          <div className="relative h-full w-[85%] max-w-xs bg-white/80 p-5 text-right shadow-2xl backdrop-blur-2xl">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs tracking-[0.25em] text-slate-500">نوفا ماكس</p>
+                <p className="text-base font-semibold text-slate-900">
+                  {storeLabel ?? "لوحة المتجر"}
+                </p>
+              </div>
+              <button
+                type="button"
+                className="rounded-full border border-white/60 bg-white/70 p-2"
+                onClick={() => setMenuOpen(false)}
+                aria-label="إغلاق"
+              >
+                <XMarkIcon className="h-5 w-5 text-slate-700" />
+              </button>
+            </div>
+
+            <div className="mt-6 space-y-3">
+              <button
+                type="button"
+                onClick={() => scrollToSection("store")}
+                className="w-full rounded-2xl border border-white/60 bg-white/70 px-4 py-3 text-sm font-semibold text-slate-800"
+              >
+                هوية المتجر
+              </button>
+              <button
+                type="button"
+                onClick={() => scrollToSection("drivers")}
+                className="w-full rounded-2xl border border-white/60 bg-white/70 px-4 py-3 text-sm font-semibold text-slate-800"
+              >
+                السائقون
+              </button>
+              <button
+                type="button"
+                onClick={() => scrollToSection("wallet")}
+                className="w-full rounded-2xl border border-white/60 bg-white/70 px-4 py-3 text-sm font-semibold text-slate-800"
+              >
+                المحفظة
+              </button>
+              <button
+                type="button"
+                onClick={() => scrollToSection("orders")}
+                className="w-full rounded-2xl border border-white/60 bg-white/70 px-4 py-3 text-sm font-semibold text-slate-800"
+              >
+                الطلبات
+              </button>
+            </div>
+
+            <div className="mt-6 rounded-2xl border border-white/60 bg-white/70 p-4">
+              <div className="flex items-center gap-2 text-sm font-semibold text-slate-800">
+                <Cog6ToothIcon className="h-4 w-4 text-orange-500" />
+                الإعدادات
+              </div>
+              <div className="mt-3 space-y-2 text-xs text-slate-600">
+                <div className="flex items-center justify-between">
+                  <span>تنبيهات الطلبات</span>
+                  <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-emerald-700">
+                    مفعّل
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span>الوضع الصامت</span>
+                  <span className="rounded-full bg-slate-200 px-2 py-0.5 text-slate-700">
+                    غير مفعّل
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-4 space-y-2">
+              <button
+                type="button"
+                className="flex w-full items-center justify-between rounded-2xl border border-white/60 bg-white/70 px-4 py-3 text-sm font-semibold text-slate-800"
+              >
+                الدعم الفني
+                <LifebuoyIcon className="h-4 w-4 text-slate-600" />
+              </button>
+              <button
+                type="button"
+                onClick={clearStore}
+                className="flex w-full items-center justify-between rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-700"
+              >
+                تسجيل الخروج
+                <ArrowRightOnRectangleIcon className="h-4 w-4" />
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       <div className="mx-auto max-w-6xl px-6 py-10">
         <header className="flex flex-col gap-6 rounded-3xl border border-white/60 bg-white/70 p-6 shadow-[0_26px_70px_-45px_rgba(0,0,0,0.9)] backdrop-blur-xl md:flex-row md:items-center md:justify-between">
           <div className="flex items-center gap-4">
+            <button
+              type="button"
+              onClick={() => setMenuOpen(true)}
+              className="flex h-11 w-11 items-center justify-center rounded-2xl border border-white/60 bg-white/70 text-slate-700"
+              aria-label="فتح القائمة"
+            >
+              <Bars3Icon className="h-5 w-5" />
+            </button>
             <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-white">
               <Image src="/logo.png" alt="NOVA MAX" width={48} height={48} />
             </div>
@@ -602,7 +728,10 @@ export default function StorePanel() {
         </header>
 
         <div className="mt-8 grid gap-6 lg:grid-cols-[1.2fr_1fr]">
-          <section className="rounded-3xl border border-white/60 bg-white/70 p-6 shadow-[0_24px_60px_-40px_rgba(0,0,0,0.85)] backdrop-blur-xl">
+          <section
+            id="store"
+            className="rounded-3xl border border-white/60 bg-white/70 p-6 shadow-[0_24px_60px_-40px_rgba(0,0,0,0.85)] backdrop-blur-xl"
+          >
             <div className="flex items-center justify-between">
               <div>
                 <h2 className="text-lg font-semibold">هوية المتجر</h2>
@@ -650,7 +779,10 @@ export default function StorePanel() {
             </form>
           </section>
 
-          <section className="rounded-3xl border border-white/60 bg-white/70 p-6 shadow-[0_24px_60px_-40px_rgba(0,0,0,0.85)] backdrop-blur-xl">
+          <section
+            id="drivers"
+            className="rounded-3xl border border-white/60 bg-white/70 p-6 shadow-[0_24px_60px_-40px_rgba(0,0,0,0.85)] backdrop-blur-xl"
+          >
             <div className="flex items-center gap-2 text-lg font-semibold">
               <CheckCircleIcon className="h-5 w-5 text-orange-400" />
               مدخل السائق
@@ -712,7 +844,10 @@ export default function StorePanel() {
         </div>
 
         <div className="mt-6 grid gap-6 lg:grid-cols-2">
-          <section className="rounded-3xl border border-white/60 bg-white/70 p-6 shadow-[0_24px_60px_-40px_rgba(0,0,0,0.85)] backdrop-blur-xl">
+          <section
+            id="wallet"
+            className="rounded-3xl border border-white/60 bg-white/70 p-6 shadow-[0_24px_60px_-40px_rgba(0,0,0,0.85)] backdrop-blur-xl"
+          >
             <div className="flex items-center gap-2 text-lg font-semibold">
               إدارة محفظة السائق
             </div>
@@ -769,7 +904,10 @@ export default function StorePanel() {
             </div>
           </section>
 
-          <section className="rounded-3xl border border-white/60 bg-white/70 p-6 shadow-[0_24px_60px_-40px_rgba(0,0,0,0.85)] backdrop-blur-xl">
+          <section
+            id="driver-remove"
+            className="rounded-3xl border border-white/60 bg-white/70 p-6 shadow-[0_24px_60px_-40px_rgba(0,0,0,0.85)] backdrop-blur-xl"
+          >
             <div className="flex items-center gap-2 text-lg font-semibold">
               حذف السائق نهائياً
             </div>
@@ -794,7 +932,10 @@ export default function StorePanel() {
           </section>
         </div>
 
-        <section className="mt-6 rounded-3xl border border-white/60 bg-white/70 p-6 shadow-[0_24px_60px_-40px_rgba(0,0,0,0.85)] backdrop-blur-xl">
+        <section
+          id="order-create"
+          className="mt-6 rounded-3xl border border-white/60 bg-white/70 p-6 shadow-[0_24px_60px_-40px_rgba(0,0,0,0.85)] backdrop-blur-xl"
+        >
           <div className="flex items-center gap-2 text-lg font-semibold">
             <BoltIcon className="h-5 w-5 text-indigo-400" />
             إنشاء طلب
@@ -863,7 +1004,10 @@ export default function StorePanel() {
           </form>
         </section>
 
-        <section className="mt-6 rounded-3xl border border-white/60 bg-white/70 p-6 shadow-[0_24px_60px_-40px_rgba(0,0,0,0.85)] backdrop-blur-xl">
+        <section
+          id="orders"
+          className="mt-6 rounded-3xl border border-white/60 bg-white/70 p-6 shadow-[0_24px_60px_-40px_rgba(0,0,0,0.85)] backdrop-blur-xl"
+        >
           <div className="flex items-center gap-2 text-lg font-semibold">
             الطلبات المباشرة
           </div>
