@@ -25,7 +25,10 @@ type Order = {
   delivery_fee: number | null;
   status: string | null;
   created_at: string | null;
+  delivered_at?: string | null;
 };
+
+type ApiResponse = Record<string, any>;
 
 const statusStyles: Record<string, string> = {
   pending: "bg-amber-100 text-amber-800 border-amber-200",
@@ -60,8 +63,12 @@ function formatPayout(value: string | null | undefined): string {
   return payoutLabels[value] ?? value;
 }
 
-function generateCode(): string {
-  return Math.floor(100000 + Math.random() * 900000).toString();
+function buildWsUrl(path: string, params: Record<string, string>): string {
+  const url = new URL(API_BASE);
+  url.protocol = url.protocol === "https:" ? "wss:" : "ws:";
+  url.pathname = path;
+  Object.entries(params).forEach(([key, value]) => url.searchParams.set(key, value));
+  return url.toString();
 }
 
 export default function StorePanel() {
@@ -71,6 +78,7 @@ export default function StorePanel() {
   const [storeLabel, setStoreLabel] = useState<string | null>(null);
   const [driverName, setDriverName] = useState("");
   const [driverPhone, setDriverPhone] = useState("");
+  const [driverEmail, setDriverEmail] = useState("");
   const [driverPhotoUrl, setDriverPhotoUrl] = useState("");
   const [driverCode, setDriverCode] = useState<string | null>(null);
   const [walletDriverId, setWalletDriverId] = useState("");
@@ -107,7 +115,7 @@ export default function StorePanel() {
         headers: { "Content-Type": "application/json", "X-Admin-Code": adminCode },
         body: JSON.stringify({ admin_code: adminCode }),
       });
-      const data = await res.json();
+      const data = (await res.json()) as ApiResponse;
       if (data?.store?.id) {
         setStoreId(data.store.id);
         setStoreLabel(data.store.name ?? null);
@@ -190,6 +198,10 @@ export default function StorePanel() {
     if (!storeId && !adminCode) return;
     let active = true;
     let source: EventSource | null = null;
+    let socket: WebSocket | null = null;
+    let pingTimer: number | null = null;
+    let reconnectTimer: number | null = null;
+    let retry = 0;
     const query = storeId
       ? `store_id=${encodeURIComponent(storeId)}`
       : `admin_code=${encodeURIComponent(adminCode)}`;
@@ -197,7 +209,7 @@ export default function StorePanel() {
     const fetchOrders = async (showToasts: boolean) => {
       try {
         const res = await fetch(`${API_BASE}/orders?${query}`);
-        const data = await res.json();
+        const data = (await res.json()) as ApiResponse;
         if (active && data?.orders) {
           applyOrders(data.orders, showToasts && hasLoadedRef.current);
           if (!hasLoadedRef.current) hasLoadedRef.current = true;
@@ -205,6 +217,103 @@ export default function StorePanel() {
       } catch {
         if (showToasts) toast.error("تعذر تحميل الطلبات");
       }
+    };
+
+    const upsertOrder = (
+      incoming: Partial<Order> & { id: string },
+      showToasts = true
+    ) => {
+      const current = ordersRef.current;
+      const idx = current.findIndex((order) => order.id === incoming.id);
+      let next: Order[];
+      if (idx >= 0) {
+        next = [...current];
+        next[idx] = { ...next[idx], ...incoming };
+      } else {
+        next = [incoming as Order, ...current];
+      }
+      const shouldToast = showToasts && hasLoadedRef.current;
+      applyOrders(next, shouldToast);
+      if (!hasLoadedRef.current) hasLoadedRef.current = true;
+    };
+
+    const handleRealtime = (payload: Record<string, unknown>) => {
+      const type = payload.type;
+      if (type === "order_created" && payload.order && typeof payload.order === "object") {
+        upsertOrder(payload.order as Order);
+        return;
+      }
+      if (type === "order_status" && typeof payload.order_id === "string") {
+        upsertOrder(
+          {
+            id: payload.order_id,
+            status: typeof payload.status === "string" ? payload.status : null,
+            driver_id:
+              typeof payload.driver_id === "string" ? payload.driver_id : null,
+            delivered_at:
+              typeof payload.delivered_at === "string"
+                ? payload.delivered_at
+                : null,
+          },
+          true
+        );
+        return;
+      }
+      if (type === "driver_status") {
+        toast(`تم تحديث حالة السائق`);
+        return;
+      }
+      if (type === "driver_created") {
+        toast.success("تم إنشاء سائق جديد");
+        return;
+      }
+      if (type === "driver_disabled") {
+        toast("تم تعطيل سائق");
+        return;
+      }
+      if (type === "wallet_transaction") {
+        toast("تم تحديث محفظة السائق");
+      }
+    };
+
+    const startSocket = () => {
+      const wsUrl = buildWsUrl("/realtime", {
+        role: "admin",
+        admin_code: adminCode,
+      });
+      socket = new WebSocket(wsUrl);
+
+      socket.onopen = () => {
+        retry = 0;
+        if (pingTimer) window.clearInterval(pingTimer);
+        pingTimer = window.setInterval(() => {
+          if (socket?.readyState === WebSocket.OPEN) {
+            socket.send(JSON.stringify({ type: "ping" }));
+          }
+        }, 25000);
+      };
+
+      socket.onmessage = (event) => {
+        if (!active) return;
+        try {
+          const payload = JSON.parse(event.data) as Record<string, unknown>;
+          handleRealtime(payload);
+        } catch {
+          // ignore
+        }
+      };
+
+      socket.onerror = () => {
+        socket?.close();
+      };
+
+      socket.onclose = () => {
+        if (pingTimer) window.clearInterval(pingTimer);
+        if (!active) return;
+        const delay = Math.min(30000, 1000 * 2 ** retry);
+        retry += 1;
+        reconnectTimer = window.setTimeout(startSocket, delay);
+      };
     };
 
     const startSSE = () => {
@@ -221,16 +330,21 @@ export default function StorePanel() {
       };
     };
 
-    startSSE();
+    startSocket();
     fetchOrders(false);
 
     const poll = window.setInterval(() => {
-      if (!source) fetchOrders(true);
-    }, 4000);
+      if (!socket || socket.readyState !== WebSocket.OPEN) {
+        fetchOrders(true);
+      }
+    }, 6000);
 
     return () => {
       active = false;
       source?.close();
+      socket?.close();
+      if (pingTimer) window.clearInterval(pingTimer);
+      if (reconnectTimer) window.clearTimeout(reconnectTimer);
       window.clearInterval(poll);
     };
   }, [storeId, adminCode]);
@@ -256,10 +370,10 @@ export default function StorePanel() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name: storeName }),
       });
-      const data = await res.json();
+      const data = (await res.json()) as ApiResponse;
       if (data?.store?.id) {
         setStoreId(data.store.id);
-        setAdminCode(data.store.admin_code);
+        setAdminCode(data.store.admin_code ?? "");
         setStoreLabel(data.store.name ?? null);
         toast.success("تم إنشاء المتجر", { id: toastId });
       } else {
@@ -276,20 +390,18 @@ export default function StorePanel() {
       toast.error("رمز الإدارة مطلوب");
       return;
     }
-    if (!driverName.trim() || !driverPhone.trim()) {
+    if (!driverName.trim() || !driverPhone.trim() || !driverEmail.trim()) {
       toast.error("اسم السائق ورقم الهاتف مطلوبان");
       return;
     }
     const toastId = toast.loading("جاري إنشاء السائق...");
-
-    const generatedCode = generateCode();
 
     try {
       const payload: Record<string, unknown> = {
         admin_code: adminCode,
         name: driverName,
         phone: driverPhone,
-        secret_code: generatedCode,
+        email: driverEmail,
       };
       if (driverPhotoUrl) payload.photo_url = driverPhotoUrl;
       if (storeId) payload.store_id = storeId;
@@ -300,11 +412,12 @@ export default function StorePanel() {
         body: JSON.stringify(payload),
       });
 
-      const data = await res.json();
+      const data = (await res.json()) as ApiResponse;
       if (data?.driver?.secret_code) {
         setDriverCode(data.driver.secret_code);
         setDriverName("");
         setDriverPhone("");
+        setDriverEmail("");
         setDriverPhotoUrl("");
         toast.success("تم إنشاء السائق", { id: toastId });
         toast("تم تجهيز صندوق نسخ الكود", { icon: "✨" });
@@ -361,7 +474,7 @@ export default function StorePanel() {
           }),
         }
       );
-      const data = await res.json();
+      const data = (await res.json()) as ApiResponse;
       if (data?.ok) {
         toast.success("تم تحديث المحفظة", { id: toastId });
         setWalletAmount("");
@@ -398,7 +511,7 @@ export default function StorePanel() {
           body: JSON.stringify({ admin_code: adminCode }),
         }
       );
-      const data = await res.json();
+      const data = (await res.json()) as ApiResponse;
       if (data?.ok) {
         toast.success("تم حذف السائق", { id: toastId });
         setDeleteDriverId("");
@@ -439,7 +552,7 @@ export default function StorePanel() {
         body: JSON.stringify(payload),
       });
 
-      const data = await res.json();
+      const data = (await res.json()) as ApiResponse;
       if (data?.order?.id) {
         e.currentTarget.reset();
         toast.success("تم إنشاء الطلب", { id: toastId });
@@ -557,6 +670,12 @@ export default function StorePanel() {
                 placeholder="هاتف السائق"
                 value={driverPhone}
                 onChange={(e) => setDriverPhone(e.target.value)}
+              />
+              <input
+                className="h-11 rounded-xl border border-slate-800 bg-slate-950 px-4 text-sm text-slate-100 outline-none focus:border-slate-600"
+                placeholder="البريد الإلكتروني"
+                value={driverEmail}
+                onChange={(e) => setDriverEmail(e.target.value)}
               />
               <input
                 className="h-11 rounded-xl border border-slate-800 bg-slate-950 px-4 text-sm text-slate-100 outline-none focus:border-slate-600"
