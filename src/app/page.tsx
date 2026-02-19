@@ -773,7 +773,7 @@ export default function StorePanel() {
                 value={storeName}
                 onChange={(e) => setStoreName(e.target.value)}
               />
-              <button className="h-11 rounded-xl bg-indigo-500 text-sm font-semibold text-white transition hover:bg-indigo-400">
+              <button className="h-11 rounded-xl bg-indigo-200 text-sm font-semibold text-slate-900 transition hover:bg-indigo-300">
                 إنشاء المتجر
               </button>
             </form>
@@ -815,7 +815,7 @@ export default function StorePanel() {
                 value={driverPhotoUrl}
                 onChange={(e) => setDriverPhotoUrl(e.target.value)}
               />
-              <button className="h-11 rounded-xl bg-orange-500 text-sm font-semibold text-white transition hover:bg-orange-400">
+              <button className="h-11 rounded-xl bg-orange-200 text-sm font-semibold text-slate-900 transition hover:bg-orange-300">
                 توليد وإنشاء السائق
               </button>
             </form>
@@ -889,14 +889,14 @@ export default function StorePanel() {
                 <button
                   type="button"
                   onClick={() => updateWallet("credit")}
-                  className="h-11 rounded-xl bg-orange-500 text-sm font-semibold text-white transition hover:bg-orange-400"
+                  className="h-11 rounded-xl bg-orange-200 text-sm font-semibold text-slate-900 transition hover:bg-orange-300"
                 >
                   شحن المحفظة
                 </button>
                 <button
                   type="button"
                   onClick={() => updateWallet("debit")}
-                  className="h-11 rounded-xl border border-rose-400/40 bg-rose-500/10 text-sm font-semibold text-rose-100 transition hover:bg-rose-500/20"
+                  className="h-11 rounded-xl border border-rose-200 bg-rose-50 text-sm font-semibold text-rose-700 transition hover:bg-rose-100"
                 >
                   سحب المبلغ
                 </button>
@@ -924,7 +924,7 @@ export default function StorePanel() {
               <button
                 type="button"
                 onClick={removeDriver}
-                className="h-11 rounded-xl border border-rose-400/40 bg-rose-500/10 text-sm font-semibold text-rose-100 transition hover:bg-rose-500/20"
+                className="h-11 rounded-xl border border-rose-200 bg-rose-50 text-sm font-semibold text-rose-700 transition hover:bg-rose-100"
               >
                 حذف السائق نهائياً
               </button>
@@ -998,7 +998,7 @@ export default function StorePanel() {
               className="h-11 rounded-xl border border-white/60 bg-white/70 px-4 text-sm text-slate-900 outline-none focus:border-slate-400"
               placeholder="معرّف السائق (اختياري)"
             />
-            <button className="h-11 rounded-xl bg-indigo-500 text-sm font-semibold text-white transition hover:bg-indigo-400 md:col-span-2">
+            <button className="h-11 rounded-xl bg-indigo-200 text-sm font-semibold text-slate-900 transition hover:bg-indigo-300 md:col-span-2">
               إنشاء الطلب
             </button>
           </form>
@@ -1079,4 +1079,5 @@ export default function StorePanel() {
     </div>
   );
 }
+
 
