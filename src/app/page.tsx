@@ -565,16 +565,16 @@ export default function StorePanel() {
   };
 
   return (
-    <div className="min-h-screen bg-[#05070f] text-slate-100 [background-image:radial-gradient(circle_at_top,rgba(255,255,255,0.08),transparent_55%),radial-gradient(circle_at_bottom,rgba(255,153,0,0.12),transparent_55%)]">
+    <div className="min-h-screen bg-[#f5f7ff] text-slate-900 [background-image:radial-gradient(circle_at_top,rgba(255,255,255,0.9),transparent_55%),radial-gradient(circle_at_bottom,rgba(186,230,253,0.65),transparent_55%)]">
       <Toaster position="top-right" />
       <div className="mx-auto max-w-6xl px-6 py-10">
-        <header className="flex flex-col gap-6 rounded-3xl border border-white/10 bg-white/5 p-6 shadow-[0_26px_70px_-45px_rgba(0,0,0,0.9)] backdrop-blur-xl md:flex-row md:items-center md:justify-between">
+        <header className="flex flex-col gap-6 rounded-3xl border border-white/60 bg-white/70 p-6 shadow-[0_26px_70px_-45px_rgba(0,0,0,0.9)] backdrop-blur-xl md:flex-row md:items-center md:justify-between">
           <div className="flex items-center gap-4">
             <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-white">
               <Image src="/logo.png" alt="NOVA MAX" width={48} height={48} />
             </div>
             <div>
-              <p className="text-xs tracking-[0.25em] text-slate-400">
+              <p className="text-xs tracking-[0.25em] text-slate-500">
                 لوحة التحكم اللوجستية
               </p>
               <h1 className="text-3xl font-semibold tracking-tight">
@@ -583,18 +583,18 @@ export default function StorePanel() {
             </div>
           </div>
           <div className="grid grid-cols-2 gap-3 text-xs md:flex md:items-center">
-            <div className="rounded-full border border-white/15 bg-white/5 px-4 py-2 backdrop-blur">
+            <div className="rounded-full border border-white/15 bg-white/70 px-4 py-2 backdrop-blur">
               الإجمالي <span className="ml-2 font-semibold">{stats.total}</span>
             </div>
-            <div className="rounded-full border border-white/15 bg-white/5 px-4 py-2 backdrop-blur">
+            <div className="rounded-full border border-white/15 bg-white/70 px-4 py-2 backdrop-blur">
               قيد الانتظار{" "}
               <span className="ml-2 font-semibold">{stats.pending}</span>
             </div>
-            <div className="rounded-full border border-white/15 bg-white/5 px-4 py-2 backdrop-blur">
+            <div className="rounded-full border border-white/15 bg-white/70 px-4 py-2 backdrop-blur">
               قيد التوصيل{" "}
               <span className="ml-2 font-semibold">{stats.delivering}</span>
             </div>
-            <div className="rounded-full border border-white/15 bg-white/5 px-4 py-2 backdrop-blur">
+            <div className="rounded-full border border-white/15 bg-white/70 px-4 py-2 backdrop-blur">
               تم التسليم{" "}
               <span className="ml-2 font-semibold">{stats.delivered}</span>
             </div>
@@ -602,11 +602,11 @@ export default function StorePanel() {
         </header>
 
         <div className="mt-8 grid gap-6 lg:grid-cols-[1.2fr_1fr]">
-          <section className="rounded-3xl border border-white/10 bg-white/5 p-6 shadow-[0_24px_60px_-40px_rgba(0,0,0,0.85)] backdrop-blur-xl">
+          <section className="rounded-3xl border border-white/60 bg-white/70 p-6 shadow-[0_24px_60px_-40px_rgba(0,0,0,0.85)] backdrop-blur-xl">
             <div className="flex items-center justify-between">
               <div>
                 <h2 className="text-lg font-semibold">هوية المتجر</h2>
-                <p className="mt-1 text-sm text-slate-400">
+                <p className="mt-1 text-sm text-slate-500">
                   احتفظ ببيانات المتجر جاهزة لكل عملية.
                 </p>
               </div>
@@ -614,7 +614,7 @@ export default function StorePanel() {
             </div>
             <div className="mt-5 grid gap-3">
               <input
-                className="h-11 rounded-xl border border-slate-800 bg-slate-950 px-4 text-sm text-slate-100 outline-none focus:border-slate-600"
+                className="h-11 rounded-xl border border-white/60 bg-white/70 px-4 text-sm text-slate-900 outline-none focus:border-slate-400"
                 placeholder="رمز الإدارة"
                 value={adminCode}
                 onChange={(e) => setAdminCode(e.target.value)}
@@ -622,16 +622,16 @@ export default function StorePanel() {
               <button
                 type="button"
                 onClick={() => resolveStore(false)}
-                className="h-11 rounded-xl border border-slate-700 bg-slate-900 text-sm font-semibold text-slate-200 transition hover:border-slate-500"
+                className="h-11 rounded-xl border border-white/60 bg-white/70 text-sm font-semibold text-slate-700 transition hover:border-slate-500"
               >
                 ربط المتجر بالكود
               </button>
             </div>
 
             {storeId && (
-              <div className="mt-4 rounded-2xl border border-slate-800 bg-slate-950 px-4 py-3 text-sm text-slate-300">
+              <div className="mt-4 rounded-2xl border border-white/60 bg-white/70 px-4 py-3 text-sm text-slate-700">
                 <p className="text-xs text-slate-500">المتجر الحالي</p>
-                <p className="mt-1 font-semibold text-slate-100">
+                <p className="mt-1 font-semibold text-slate-900">
                   {storeLabel ?? "تم ربط المتجر"}
                 </p>
               </div>
@@ -639,7 +639,7 @@ export default function StorePanel() {
 
             <form onSubmit={createStore} className="mt-5 grid gap-3">
               <input
-                className="h-11 rounded-xl border border-slate-800 bg-slate-950 px-4 text-sm text-slate-100 outline-none focus:border-slate-600"
+                className="h-11 rounded-xl border border-white/60 bg-white/70 px-4 text-sm text-slate-900 outline-none focus:border-slate-400"
                 placeholder="اسم المتجر"
                 value={storeName}
                 onChange={(e) => setStoreName(e.target.value)}
@@ -650,35 +650,35 @@ export default function StorePanel() {
             </form>
           </section>
 
-          <section className="rounded-3xl border border-white/10 bg-white/5 p-6 shadow-[0_24px_60px_-40px_rgba(0,0,0,0.85)] backdrop-blur-xl">
+          <section className="rounded-3xl border border-white/60 bg-white/70 p-6 shadow-[0_24px_60px_-40px_rgba(0,0,0,0.85)] backdrop-blur-xl">
             <div className="flex items-center gap-2 text-lg font-semibold">
               <CheckCircleIcon className="h-5 w-5 text-orange-400" />
               مدخل السائق
             </div>
-            <p className="mt-1 text-sm text-slate-400">
+            <p className="mt-1 text-sm text-slate-500">
               توليد كود سري آمن للسائق تلقائياً.
             </p>
             <form onSubmit={createDriver} className="mt-5 grid gap-3">
               <input
-                className="h-11 rounded-xl border border-slate-800 bg-slate-950 px-4 text-sm text-slate-100 outline-none focus:border-slate-600"
+                className="h-11 rounded-xl border border-white/60 bg-white/70 px-4 text-sm text-slate-900 outline-none focus:border-slate-400"
                 placeholder="اسم السائق"
                 value={driverName}
                 onChange={(e) => setDriverName(e.target.value)}
               />
               <input
-                className="h-11 rounded-xl border border-slate-800 bg-slate-950 px-4 text-sm text-slate-100 outline-none focus:border-slate-600"
+                className="h-11 rounded-xl border border-white/60 bg-white/70 px-4 text-sm text-slate-900 outline-none focus:border-slate-400"
                 placeholder="هاتف السائق"
                 value={driverPhone}
                 onChange={(e) => setDriverPhone(e.target.value)}
               />
               <input
-                className="h-11 rounded-xl border border-slate-800 bg-slate-950 px-4 text-sm text-slate-100 outline-none focus:border-slate-600"
+                className="h-11 rounded-xl border border-white/60 bg-white/70 px-4 text-sm text-slate-900 outline-none focus:border-slate-400"
                 placeholder="البريد الإلكتروني"
                 value={driverEmail}
                 onChange={(e) => setDriverEmail(e.target.value)}
               />
               <input
-                className="h-11 rounded-xl border border-slate-800 bg-slate-950 px-4 text-sm text-slate-100 outline-none focus:border-slate-600"
+                className="h-11 rounded-xl border border-white/60 bg-white/70 px-4 text-sm text-slate-900 outline-none focus:border-slate-400"
                 placeholder="رابط صورة السائق (اختياري)"
                 value={driverPhotoUrl}
                 onChange={(e) => setDriverPhotoUrl(e.target.value)}
@@ -712,16 +712,16 @@ export default function StorePanel() {
         </div>
 
         <div className="mt-6 grid gap-6 lg:grid-cols-2">
-          <section className="rounded-3xl border border-white/10 bg-white/5 p-6 shadow-[0_24px_60px_-40px_rgba(0,0,0,0.85)] backdrop-blur-xl">
+          <section className="rounded-3xl border border-white/60 bg-white/70 p-6 shadow-[0_24px_60px_-40px_rgba(0,0,0,0.85)] backdrop-blur-xl">
             <div className="flex items-center gap-2 text-lg font-semibold">
               إدارة محفظة السائق
             </div>
-            <p className="mt-1 text-sm text-slate-400">
+            <p className="mt-1 text-sm text-slate-500">
               شحن أو سحب مستحقات السائق حسب طريقة الدفع.
             </p>
             <div className="mt-4 grid gap-3">
               <input
-                className="h-11 rounded-xl border border-slate-800 bg-slate-950 px-4 text-sm text-slate-100 outline-none focus:border-slate-600"
+                className="h-11 rounded-xl border border-white/60 bg-white/70 px-4 text-sm text-slate-900 outline-none focus:border-slate-400"
                 placeholder="معرّف السائق"
                 value={walletDriverId}
                 onChange={(e) => setWalletDriverId(e.target.value)}
@@ -729,13 +729,13 @@ export default function StorePanel() {
               <input
                 type="number"
                 step="0.01"
-                className="h-11 rounded-xl border border-slate-800 bg-slate-950 px-4 text-sm text-slate-100 outline-none focus:border-slate-600"
+                className="h-11 rounded-xl border border-white/60 bg-white/70 px-4 text-sm text-slate-900 outline-none focus:border-slate-400"
                 placeholder="المبلغ"
                 value={walletAmount}
                 onChange={(e) => setWalletAmount(e.target.value)}
               />
               <select
-                className="h-11 rounded-xl border border-slate-800 bg-slate-950 px-4 text-sm text-slate-100 outline-none focus:border-slate-600"
+                className="h-11 rounded-xl border border-white/60 bg-white/70 px-4 text-sm text-slate-900 outline-none focus:border-slate-400"
                 value={walletMethod}
                 onChange={(e) => setWalletMethod(e.target.value)}
               >
@@ -745,7 +745,7 @@ export default function StorePanel() {
                 <option value="bank_transfer">حوالة مصرفية</option>
               </select>
               <input
-                className="h-11 rounded-xl border border-slate-800 bg-slate-950 px-4 text-sm text-slate-100 outline-none focus:border-slate-600"
+                className="h-11 rounded-xl border border-white/60 bg-white/70 px-4 text-sm text-slate-900 outline-none focus:border-slate-400"
                 placeholder="ملاحظة (اختياري)"
                 value={walletNote}
                 onChange={(e) => setWalletNote(e.target.value)}
@@ -769,16 +769,16 @@ export default function StorePanel() {
             </div>
           </section>
 
-          <section className="rounded-3xl border border-white/10 bg-white/5 p-6 shadow-[0_24px_60px_-40px_rgba(0,0,0,0.85)] backdrop-blur-xl">
+          <section className="rounded-3xl border border-white/60 bg-white/70 p-6 shadow-[0_24px_60px_-40px_rgba(0,0,0,0.85)] backdrop-blur-xl">
             <div className="flex items-center gap-2 text-lg font-semibold">
               حذف السائق نهائياً
             </div>
-            <p className="mt-1 text-sm text-slate-400">
+            <p className="mt-1 text-sm text-slate-500">
               استخدم هذه الخاصية عند مغادرة السائق للعمل.
             </p>
             <div className="mt-4 grid gap-3">
               <input
-                className="h-11 rounded-xl border border-slate-800 bg-slate-950 px-4 text-sm text-slate-100 outline-none focus:border-slate-600"
+                className="h-11 rounded-xl border border-white/60 bg-white/70 px-4 text-sm text-slate-900 outline-none focus:border-slate-400"
                 placeholder="معرّف السائق"
                 value={deleteDriverId}
                 onChange={(e) => setDeleteDriverId(e.target.value)}
@@ -794,7 +794,7 @@ export default function StorePanel() {
           </section>
         </div>
 
-        <section className="mt-6 rounded-3xl border border-white/10 bg-white/5 p-6 shadow-[0_24px_60px_-40px_rgba(0,0,0,0.85)] backdrop-blur-xl">
+        <section className="mt-6 rounded-3xl border border-white/60 bg-white/70 p-6 shadow-[0_24px_60px_-40px_rgba(0,0,0,0.85)] backdrop-blur-xl">
           <div className="flex items-center gap-2 text-lg font-semibold">
             <BoltIcon className="h-5 w-5 text-indigo-400" />
             إنشاء طلب
@@ -802,25 +802,25 @@ export default function StorePanel() {
           <form onSubmit={createOrder} className="mt-5 grid gap-3 md:grid-cols-2">
             <input
               name="customer_name"
-              className="h-11 rounded-xl border border-slate-800 bg-slate-950 px-4 text-sm text-slate-100 outline-none focus:border-slate-600"
+              className="h-11 rounded-xl border border-white/60 bg-white/70 px-4 text-sm text-slate-900 outline-none focus:border-slate-400"
               placeholder="اسم العميل"
               required
             />
             <input
               name="receiver_name"
-              className="h-11 rounded-xl border border-slate-800 bg-slate-950 px-4 text-sm text-slate-100 outline-none focus:border-slate-600"
+              className="h-11 rounded-xl border border-white/60 bg-white/70 px-4 text-sm text-slate-900 outline-none focus:border-slate-400"
               placeholder="اسم المستلم"
               required
             />
             <input
               name="customer_location_text"
-              className="h-11 rounded-xl border border-slate-800 bg-slate-950 px-4 text-sm text-slate-100 outline-none focus:border-slate-600"
+              className="h-11 rounded-xl border border-white/60 bg-white/70 px-4 text-sm text-slate-900 outline-none focus:border-slate-400"
               placeholder="موقع الطلب"
               required
             />
             <input
               name="order_type"
-              className="h-11 rounded-xl border border-slate-800 bg-slate-950 px-4 text-sm text-slate-100 outline-none focus:border-slate-600"
+              className="h-11 rounded-xl border border-white/60 bg-white/70 px-4 text-sm text-slate-900 outline-none focus:border-slate-400"
               placeholder="نوع الطلب"
               required
             />
@@ -828,19 +828,19 @@ export default function StorePanel() {
               name="price"
               type="number"
               step="0.01"
-              className="h-11 rounded-xl border border-slate-800 bg-slate-950 px-4 text-sm text-slate-100 outline-none focus:border-slate-600"
+              className="h-11 rounded-xl border border-white/60 bg-white/70 px-4 text-sm text-slate-900 outline-none focus:border-slate-400"
               placeholder="سعر الطلب"
             />
             <input
               name="delivery_fee"
               type="number"
               step="0.01"
-              className="h-11 rounded-xl border border-slate-800 bg-slate-950 px-4 text-sm text-slate-100 outline-none focus:border-slate-600"
+              className="h-11 rounded-xl border border-white/60 bg-white/70 px-4 text-sm text-slate-900 outline-none focus:border-slate-400"
               placeholder="رسوم التوصيل"
             />
             <select
               name="payout_method"
-              className="h-11 rounded-xl border border-slate-800 bg-slate-950 px-4 text-sm text-slate-100 outline-none focus:border-slate-600"
+              className="h-11 rounded-xl border border-white/60 bg-white/70 px-4 text-sm text-slate-900 outline-none focus:border-slate-400"
               defaultValue=""
               required
             >
@@ -854,7 +854,7 @@ export default function StorePanel() {
             </select>
             <input
               name="driver_id"
-              className="h-11 rounded-xl border border-slate-800 bg-slate-950 px-4 text-sm text-slate-100 outline-none focus:border-slate-600"
+              className="h-11 rounded-xl border border-white/60 bg-white/70 px-4 text-sm text-slate-900 outline-none focus:border-slate-400"
               placeholder="معرّف السائق (اختياري)"
             />
             <button className="h-11 rounded-xl bg-indigo-500 text-sm font-semibold text-white transition hover:bg-indigo-400 md:col-span-2">
@@ -863,13 +863,13 @@ export default function StorePanel() {
           </form>
         </section>
 
-        <section className="mt-6 rounded-3xl border border-white/10 bg-white/5 p-6 shadow-[0_24px_60px_-40px_rgba(0,0,0,0.85)] backdrop-blur-xl">
+        <section className="mt-6 rounded-3xl border border-white/60 bg-white/70 p-6 shadow-[0_24px_60px_-40px_rgba(0,0,0,0.85)] backdrop-blur-xl">
           <div className="flex items-center gap-2 text-lg font-semibold">
             الطلبات المباشرة
           </div>
           <div className="mt-4 overflow-x-auto">
             <table className="w-full text-right text-sm">
-              <thead className="text-xs uppercase tracking-[0.2em] text-slate-400">
+              <thead className="text-xs uppercase tracking-[0.2em] text-slate-500">
                 <tr>
                   <th className="py-2">الطلب</th>
                   <th>العميل</th>
@@ -891,29 +891,29 @@ export default function StorePanel() {
                         : "bg-transparent"
                     }`}
                   >
-                    <td className="py-3 font-semibold text-slate-100">
+                    <td className="py-3 font-semibold text-slate-900">
                       {order.id.slice(0, 8)}...
                     </td>
-                    <td className="text-slate-200">{order.customer_name ?? "-"}</td>
-                    <td className="text-slate-300">{order.receiver_name ?? "-"}</td>
-                    <td className="text-slate-300">{order.order_type ?? "-"}</td>
-                    <td className="text-slate-400">
+                    <td className="text-slate-700">{order.customer_name ?? "-"}</td>
+                    <td className="text-slate-700">{order.receiver_name ?? "-"}</td>
+                    <td className="text-slate-700">{order.order_type ?? "-"}</td>
+                    <td className="text-slate-500">
                       {order.driver_id ? `${order.driver_id.slice(0, 8)}...` : "-"}
                     </td>
                     <td>
                       <span
                         className={`inline-flex items-center rounded-full border px-3 py-1 text-xs font-medium ${
                           statusStyles[order.status ?? ""] ??
-                          "border-slate-700 bg-slate-800 text-slate-300"
+                          "border-white/60 bg-slate-800 text-slate-700"
                         }`}
                       >
                         {formatStatus(order.status)}
                       </span>
                     </td>
-                    <td className="text-slate-300">
+                    <td className="text-slate-700">
                       {formatPayout(order.payout_method)}
                     </td>
-                    <td className="text-left text-slate-200">
+                    <td className="text-left text-slate-700">
                       {typeof order.delivery_fee === "number"
                         ? order.delivery_fee.toFixed(2)
                         : "-"}
@@ -935,3 +935,4 @@ export default function StorePanel() {
     </div>
   );
 }
+
