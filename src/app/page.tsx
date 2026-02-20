@@ -4,12 +4,18 @@ import Image from "next/image";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Toaster, toast } from "react-hot-toast";
 import {
-  ArrowPathIcon,
-  ClipboardIcon,
-  BoltIcon,
-  CheckCircleIcon,
-  ArrowRightOnRectangleIcon,
-} from "@heroicons/react/24/outline";
+  ClipboardList,
+  Copy,
+  LayoutDashboard,
+  LogOut,
+  PackagePlus,
+  RefreshCw,
+  Settings,
+  ShieldCheck,
+  UserPlus,
+  Users,
+  Wallet,
+} from "lucide-react";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE ?? "http://localhost:8787";
 
@@ -29,31 +35,60 @@ type Order = {
   delivered_at?: string | null;
 };
 
+type DriverRow = {
+  id: string;
+  name: string | null;
+  phone: string | null;
+  email: string | null;
+  status: string | null;
+  wallet_balance: number | null;
+  is_active: number | null;
+};
+
+type LedgerSummaryRow = {
+  period: string;
+  trips: number;
+  delivery_total: number;
+};
+
+type LedgerWalletRow = {
+  period: string;
+  credits: number;
+  debits: number;
+};
+
+type LedgerDriverRow = {
+  driver_id: string;
+  driver_name: string | null;
+  period: string;
+  trips: number;
+  delivery_total: number;
+};
+
 type ApiResponse = Record<string, any>;
 
-type SectionKey = "store" | "drivers" | "wallet" | "remove" | "create" | "orders";
+type SectionKey = "dashboard" | "drivers" | "finance" | "inventory" | "settings";
 
-const sectionNav: Array<{ key: SectionKey; label: string }> = [
-  { key: "store", label: "هوية المتجر" },
-  { key: "drivers", label: "السائقون" },
-  { key: "wallet", label: "محفظة السائق" },
-  { key: "remove", label: "تعطيل السائق" },
-  { key: "create", label: "إنشاء طلب" },
-  { key: "orders", label: "الطلبات" },
+const sectionNav: Array<{ key: SectionKey; label: string; icon: typeof LayoutDashboard }> = [
+  { key: "dashboard", label: "لوحة التحكم", icon: LayoutDashboard },
+  { key: "drivers", label: "إدارة السائقين", icon: Users },
+  { key: "finance", label: "العمليات المالية", icon: Wallet },
+  { key: "inventory", label: "الجرد", icon: ClipboardList },
+  { key: "settings", label: "الإعدادات", icon: Settings },
 ];
 
 const navButtonBase =
-  "rounded-2xl border px-4 py-3 text-sm font-semibold transition";
-const navButtonActive = "border-orange-200 bg-orange-100 text-orange-700";
+  "rounded-lg border px-3 py-2 text-sm font-semibold transition flex flex-row-reverse items-center gap-2";
+const navButtonActive = "border-slate-900 bg-slate-900 text-white";
 const navButtonInactive =
-  "border-white/60 bg-white/70 text-slate-700 hover:border-slate-400";
+  "border-slate-200 bg-white text-slate-700 hover:border-slate-400";
 
 const statusStyles: Record<string, string> = {
-  pending: "bg-amber-100 text-amber-800 border-amber-200",
-  accepted: "bg-sky-100 text-sky-800 border-sky-200",
-  delivering: "bg-indigo-100 text-indigo-800 border-indigo-200",
-  delivered: "bg-orange-100 text-orange-800 border-orange-200",
-  cancelled: "bg-rose-100 text-rose-800 border-rose-200",
+  pending: "bg-slate-100 text-slate-700 border-slate-200",
+  accepted: "bg-slate-100 text-slate-700 border-slate-200",
+  delivering: "bg-orange-100 text-orange-700 border-orange-200",
+  delivered: "bg-slate-900 text-white border-slate-900",
+  cancelled: "bg-slate-200 text-slate-600 border-slate-200",
 };
 
 const statusLabels: Record<string, string> = {
@@ -81,6 +116,35 @@ function formatPayout(value: string | null | undefined): string {
   return payoutLabels[value] ?? value;
 }
 
+const canUseWebAuthn = () =>
+  typeof window !== "undefined" &&
+  window.isSecureContext &&
+  "PublicKeyCredential" in window;
+
+const bufferToBase64Url = (buffer: ArrayBuffer) => {
+  const bytes = new Uint8Array(buffer);
+  let binary = "";
+  bytes.forEach((b) => {
+    binary += String.fromCharCode(b);
+  });
+  return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+};
+
+const base64UrlToBuffer = (base64Url: string) => {
+  const base64 = base64Url.replace(/-/g, "+").replace(/_/g, "/");
+  const padded = base64.padEnd(base64.length + ((4 - (base64.length % 4)) % 4), "=");
+  const binary = atob(padded);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i += 1) bytes[i] = binary.charCodeAt(i);
+  return bytes.buffer;
+};
+
+const randomChallenge = (size = 32) => {
+  const bytes = new Uint8Array(size);
+  crypto.getRandomValues(bytes);
+  return bytes;
+};
+
 function buildWsUrl(path: string, params: Record<string, string>): string {
   const url = new URL(API_BASE);
   url.protocol = url.protocol === "https:" ? "wss:" : "ws:";
@@ -97,16 +161,23 @@ export default function StorePanel() {
   const [driverName, setDriverName] = useState("");
   const [driverPhone, setDriverPhone] = useState("");
   const [driverEmail, setDriverEmail] = useState("");
-  const [driverPhotoUrl, setDriverPhotoUrl] = useState("");
   const [driverCode, setDriverCode] = useState<string | null>(null);
   const [walletDriverId, setWalletDriverId] = useState("");
   const [walletAmount, setWalletAmount] = useState("");
   const [walletMethod, setWalletMethod] = useState("wallet");
   const [walletNote, setWalletNote] = useState("");
-  const [deleteDriverId, setDeleteDriverId] = useState("");
   const [orders, setOrders] = useState<Order[]>([]);
   const [flashIds, setFlashIds] = useState<Set<string>>(new Set());
-  const [activeSection, setActiveSection] = useState<SectionKey>("store");
+  const [activeSection, setActiveSection] = useState<SectionKey>("dashboard");
+  const [drivers, setDrivers] = useState<DriverRow[]>([]);
+  const [driversLoading, setDriversLoading] = useState(false);
+  const [ledgerSummary, setLedgerSummary] = useState<LedgerSummaryRow[]>([]);
+  const [ledgerWallet, setLedgerWallet] = useState<LedgerWalletRow[]>([]);
+  const [ledgerDrivers, setLedgerDrivers] = useState<LedgerDriverRow[]>([]);
+  const [ledgerPeriod, setLedgerPeriod] = useState("daily");
+  const [biometricSupported, setBiometricSupported] = useState(false);
+  const [biometricLinked, setBiometricLinked] = useState(false);
+  const [financeUnlocked, setFinanceUnlocked] = useState(false);
 
   const ordersRef = useRef<Order[]>([]);
   const hasLoadedRef = useRef(false);
@@ -125,15 +196,117 @@ export default function StorePanel() {
     localStorage.setItem("nova.admin_code", adminCode);
   }, [adminCode]);
 
+  useEffect(() => {
+    setBiometricSupported(canUseWebAuthn());
+  }, []);
+
+  useEffect(() => {
+    const key = getAdminBiometricKey();
+    if (!key) {
+      setBiometricLinked(false);
+      return;
+    }
+    setBiometricLinked(!!localStorage.getItem(key));
+  }, [adminCode]);
+
+  useEffect(() => {
+    setFinanceUnlocked(false);
+  }, [adminCode]);
+
   const clearStore = () => {
     localStorage.removeItem("nova.store_id");
     localStorage.removeItem("nova.admin_code");
     setStoreId("");
     setAdminCode("");
     setStoreLabel(null);
+    setFinanceUnlocked(false);
   };
 
-  const goToSection = (section: SectionKey) => {
+  const getAdminBiometricKey = () => {
+    if (!adminCode.trim()) return null;
+    return `nova.admin.webauthn.${adminCode.trim()}`;
+  };
+
+  const ensureFinanceAccess = async () => {
+    if (!canUseWebAuthn()) return true;
+    const key = getAdminBiometricKey();
+    if (!key) return false;
+    const stored = localStorage.getItem(key);
+    if (!stored) return false;
+    try {
+      await navigator.credentials.get({
+        publicKey: {
+          challenge: randomChallenge(),
+          timeout: 60000,
+          userVerification: "required",
+          allowCredentials: [
+            {
+              id: base64UrlToBuffer(stored),
+              type: "public-key",
+            },
+          ],
+        },
+      });
+      return true;
+    } catch {
+      toast.error("فشل التحقق بالبصمة.");
+      return false;
+    }
+  };
+
+  const registerFinanceBiometric = async () => {
+    if (!canUseWebAuthn()) return false;
+    const key = getAdminBiometricKey();
+    if (!key || localStorage.getItem(key)) return true;
+    try {
+      const userId = new TextEncoder().encode(`admin:${adminCode}`);
+      const credential = (await navigator.credentials.create({
+        publicKey: {
+          challenge: randomChallenge(),
+          rp: { name: "Nova Max WS" },
+          user: {
+            id: userId,
+            name: adminCode,
+            displayName: "Admin",
+          },
+          pubKeyCredParams: [
+            { type: "public-key", alg: -7 },
+            { type: "public-key", alg: -257 },
+          ],
+          authenticatorSelection: {
+            residentKey: "preferred",
+            userVerification: "required",
+          },
+          timeout: 60000,
+        },
+      })) as PublicKeyCredential | null;
+      if (credential?.rawId) {
+        localStorage.setItem(key, bufferToBase64Url(credential.rawId));
+        setBiometricLinked(true);
+        return true;
+      }
+    } catch {
+      toast.error("تعذر تفعيل البصمة.");
+    }
+    return false;
+  };
+
+  const goToSection = async (section: SectionKey) => {
+    if (section === "finance") {
+      const ok = await ensureFinanceAccess();
+      if (!ok) {
+        setFinanceUnlocked(false);
+        setActiveSection(section);
+        return;
+      }
+      setFinanceUnlocked(true);
+    }
+    if (section === "drivers") {
+      fetchDrivers();
+    }
+    if (section === "finance") {
+      fetchLedger(ledgerPeriod);
+    }
     setActiveSection(section);
     if (typeof window !== "undefined") {
       window.scrollTo({ top: 0, behavior: "smooth" });
@@ -209,7 +382,7 @@ export default function StorePanel() {
                 }`}
               >
                 <div className="flex items-center gap-2 text-slate-900">
-                  <BoltIcon className="h-4 w-4 text-indigo-500" />
+                  <PackagePlus className="h-4 w-4 text-slate-600" />
                   <span>
                     حالة الطلب {order.id.slice(0, 6)}... أصبحت{" "}
                     {formatStatus(order.status)}
@@ -226,6 +399,23 @@ export default function StorePanel() {
 
     ordersRef.current = nextOrders;
     setOrders(nextOrders);
+  };
+
+  const refreshOrders = async (showToasts = false) => {
+    if (!storeId && !adminCode) return;
+    const query = storeId
+      ? `store_id=${encodeURIComponent(storeId)}`
+      : `admin_code=${encodeURIComponent(adminCode)}`;
+    try {
+      const res = await fetch(`${API_BASE}/orders?${query}`);
+      const data = (await res.json()) as ApiResponse;
+      if (data?.orders) {
+        applyOrders(data.orders as Order[], showToasts && hasLoadedRef.current);
+        if (!hasLoadedRef.current) hasLoadedRef.current = true;
+      }
+    } catch {
+      if (showToasts) toast.error("تعذر تحميل الطلبات");
+    }
   };
 
   useEffect(() => {
@@ -294,19 +484,57 @@ export default function StorePanel() {
         return;
       }
       if (type === "driver_status") {
-        toast(`تم تحديث حالة السائق`);
+        if (typeof payload.driver_id === "string") {
+          setDrivers((prev) =>
+            prev.map((driver) =>
+              driver.id === payload.driver_id
+                ? {
+                    ...driver,
+                    status: typeof payload.status === "string" ? payload.status : driver.status,
+                  }
+                : driver
+            )
+          );
+        }
+        toast("تم تحديث حالة السائق");
         return;
       }
       if (type === "driver_created") {
         toast.success("تم إنشاء سائق جديد");
+        fetchDrivers();
         return;
       }
       if (type === "driver_disabled") {
+        if (typeof payload.driver_id === "string") {
+          setDrivers((prev) =>
+            prev.map((driver) =>
+              driver.id === payload.driver_id
+                ? { ...driver, is_active: 0, status: "offline" }
+                : driver
+            )
+          );
+        }
         toast("تم تعطيل سائق");
+        return;
+      }
+      if (type === "driver_active") {
+        if (typeof payload.driver_id === "string") {
+          setDrivers((prev) =>
+            prev.map((driver) =>
+              driver.id === payload.driver_id
+                ? { ...driver, is_active: 1, status: "offline" }
+                : driver
+            )
+          );
+        }
+        toast("تم تفعيل سائق");
         return;
       }
       if (type === "wallet_transaction") {
         toast("تم تحديث محفظة السائق");
+        if (activeSection === "finance") {
+          fetchLedger(ledgerPeriod);
+        }
       }
     };
 
@@ -391,6 +619,21 @@ export default function StorePanel() {
     return { total, pending, delivering, delivered };
   }, [orders]);
 
+  const recentOrders = useMemo(() => orders.slice(0, 5), [orders]);
+
+  const activeDriversCount = useMemo(
+    () => drivers.filter((driver) => driver.is_active !== 0).length,
+    [drivers]
+  );
+
+  const onlineDriversCount = useMemo(
+    () =>
+      drivers.filter(
+        (driver) => driver.is_active !== 0 && driver.status === "online"
+      ).length,
+    [drivers]
+  );
+
   const createStore = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!storeName.trim()) {
@@ -437,7 +680,6 @@ export default function StorePanel() {
         phone: driverPhone,
         email: driverEmail,
       };
-      if (driverPhotoUrl) payload.photo_url = driverPhotoUrl;
       if (storeId) payload.store_id = storeId;
 
       const res = await fetch(`${API_BASE}/drivers`, {
@@ -452,9 +694,9 @@ export default function StorePanel() {
         setDriverName("");
         setDriverPhone("");
         setDriverEmail("");
-        setDriverPhotoUrl("");
         toast.success("تم إنشاء السائق", { id: toastId });
         toast("تم تجهيز صندوق نسخ الكود", { icon: "✨" });
+        fetchDrivers();
       } else {
         toast.error(data?.error ?? "فشل إنشاء السائق", { id: toastId });
       }
@@ -470,6 +712,49 @@ export default function StorePanel() {
       toast.success("تم نسخ الكود");
     } catch {
       toast.error("تعذر النسخ");
+    }
+  };
+
+  const fetchDrivers = async () => {
+    if (!adminCode) return;
+    setDriversLoading(true);
+    try {
+      const res = await fetch(
+        `${API_BASE}/drivers?admin_code=${encodeURIComponent(adminCode)}&active=all`
+      );
+      const data = (await res.json()) as ApiResponse;
+      if (data?.drivers) {
+        setDrivers(data.drivers as DriverRow[]);
+      }
+    } catch {
+      // ignore
+    } finally {
+      setDriversLoading(false);
+    }
+  };
+
+  const fetchLedger = async (period = ledgerPeriod) => {
+    if (!adminCode) return;
+    try {
+      const [summaryRes, driversRes] = await Promise.all([
+        fetch(
+          `${API_BASE}/ledger/summary?admin_code=${encodeURIComponent(
+            adminCode
+          )}&period=${encodeURIComponent(period)}`
+        ),
+        fetch(
+          `${API_BASE}/ledger/drivers?admin_code=${encodeURIComponent(
+            adminCode
+          )}&period=${encodeURIComponent(period)}`
+        ),
+      ]);
+      const summaryData = (await summaryRes.json()) as ApiResponse;
+      const driversData = (await driversRes.json()) as ApiResponse;
+      setLedgerSummary((summaryData?.orders ?? []) as LedgerSummaryRow[]);
+      setLedgerWallet((summaryData?.wallet ?? []) as LedgerWalletRow[]);
+      setLedgerDrivers((driversData?.drivers ?? []) as LedgerDriverRow[]);
+    } catch {
+      // ignore
     }
   };
 
@@ -513,6 +798,7 @@ export default function StorePanel() {
         toast.success("تم تحديث المحفظة", { id: toastId });
         setWalletAmount("");
         setWalletNote("");
+        fetchLedger(ledgerPeriod);
       } else {
         toast.error(data?.error ?? "فشل تحديث المحفظة", { id: toastId });
       }
@@ -521,36 +807,39 @@ export default function StorePanel() {
     }
   };
 
-  const removeDriver = async () => {
+  const setDriverActive = async (driverId: string, nextActive: boolean) => {
     if (!adminCode) {
       toast.error("رمز الإدارة مطلوب");
       return;
     }
-    if (!deleteDriverId.trim()) {
-      toast.error("معرّف السائق مطلوب");
-      return;
-    }
+    if (!driverId) return;
     const confirmed = window.confirm(
-      "سيتم حذف السائق نهائياً وإلغاء ربطه بالطلبات السابقة. هل تريد المتابعة؟"
+      nextActive
+        ? "سيتم تفعيل السائق للعودة للعمل. هل تريد المتابعة؟"
+        : "سيتم تعطيل السائق وإيقاف ظهوره في القائمة النشطة. هل تريد المتابعة؟"
     );
     if (!confirmed) return;
 
-    const toastId = toast.loading("جاري حذف السائق...");
+    const toastId = toast.loading(
+      nextActive ? "جاري تفعيل السائق..." : "جاري تعطيل السائق..."
+    );
     try {
       const res = await fetch(
-        `${API_BASE}/drivers/${encodeURIComponent(deleteDriverId)}`,
+        `${API_BASE}/drivers/${encodeURIComponent(driverId)}/active`,
         {
-          method: "DELETE",
+          method: "PATCH",
           headers: { "Content-Type": "application/json", "X-Admin-Code": adminCode },
-          body: JSON.stringify({ admin_code: adminCode }),
+          body: JSON.stringify({ admin_code: adminCode, active: nextActive ? 1 : 0 }),
         }
       );
       const data = (await res.json()) as ApiResponse;
       if (data?.ok) {
-        toast.success("تم حذف السائق", { id: toastId });
-        setDeleteDriverId("");
+        toast.success(nextActive ? "تم تفعيل السائق" : "تم تعطيل السائق", {
+          id: toastId,
+        });
+        fetchDrivers();
       } else {
-        toast.error(data?.error ?? "فشل حذف السائق", { id: toastId });
+        toast.error(data?.error ?? "فشل تحديث السائق", { id: toastId });
       }
     } catch {
       toast.error("خطأ في الشبكة", { id: toastId });
@@ -598,11 +887,23 @@ export default function StorePanel() {
     }
   };
 
+  useEffect(() => {
+    if (!adminCode) return;
+    fetchDrivers();
+    fetchLedger(ledgerPeriod);
+  }, [adminCode]);
+
+  useEffect(() => {
+    if (activeSection === "finance") {
+      fetchLedger(ledgerPeriod);
+    }
+  }, [activeSection, ledgerPeriod]);
+
   return (
-    <div className="min-h-screen bg-[#f5f7ff] text-slate-900 [background-image:radial-gradient(circle_at_top,rgba(255,255,255,0.9),transparent_55%),radial-gradient(circle_at_bottom,rgba(186,230,253,0.65),transparent_55%)]">
+    <div className="min-h-screen bg-slate-50 text-slate-900">
       <Toaster position="top-right" />
       <div className="mx-auto max-w-6xl px-6 py-10">
-        <header className="flex flex-col gap-6 rounded-3xl border border-white/60 bg-white/70 p-6 shadow-[0_26px_70px_-45px_rgba(0,0,0,0.9)] backdrop-blur-xl md:flex-row md:items-center md:justify-between">
+        <header className="flex flex-col gap-6 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm md:flex-row md:items-center md:justify-between">
           <div className="flex items-center gap-4">
             <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-white">
               <Image src="/logo.png" alt="NOVA MAX" width={48} height={48} />
@@ -617,18 +918,18 @@ export default function StorePanel() {
             </div>
           </div>
           <div className="grid grid-cols-2 gap-3 text-xs md:flex md:items-center">
-            <div className="rounded-full border border-white/15 bg-white/70 px-4 py-2 backdrop-blur">
+            <div className="rounded-full border border-slate-200 bg-white px-4 py-2">
               الإجمالي <span className="ml-2 font-semibold">{stats.total}</span>
             </div>
-            <div className="rounded-full border border-white/15 bg-white/70 px-4 py-2 backdrop-blur">
+            <div className="rounded-full border border-slate-200 bg-white px-4 py-2">
               قيد الانتظار{" "}
               <span className="ml-2 font-semibold">{stats.pending}</span>
             </div>
-            <div className="rounded-full border border-white/15 bg-white/70 px-4 py-2 backdrop-blur">
+            <div className="rounded-full border border-slate-200 bg-white px-4 py-2">
               قيد التوصيل{" "}
               <span className="ml-2 font-semibold">{stats.delivering}</span>
             </div>
-            <div className="rounded-full border border-white/15 bg-white/70 px-4 py-2 backdrop-blur">
+            <div className="rounded-full border border-slate-200 bg-white px-4 py-2">
               تم التسليم{" "}
               <span className="ml-2 font-semibold">{stats.delivered}</span>
             </div>
@@ -649,378 +950,625 @@ export default function StorePanel() {
                       : navButtonInactive
                   }`}
                 >
+                  <item.icon className="h-4 w-4" />
                   {item.label}
                 </button>
               ))}
             </div>
-          <section
-            id="store"
-            className={`rounded-3xl border border-white/60 bg-white/70 p-6 shadow-[0_24px_60px_-40px_rgba(0,0,0,0.85)] backdrop-blur-xl ${
-              activeSection === "store" ? "" : "hidden"
-            }`}
-          >
-            <div className="flex items-center justify-between">
-              <div>
-                <h2 className="text-lg font-semibold">هوية المتجر</h2>
-                <p className="mt-1 text-sm text-slate-500">
-                  احتفظ ببيانات المتجر جاهزة لكل عملية.
-                </p>
-              </div>
-              <ArrowPathIcon className="h-5 w-5 text-slate-500" />
-            </div>
-            <div className="mt-5 grid gap-3">
-              <input
-                className="h-11 rounded-xl border border-white/60 bg-white/70 px-4 text-sm text-slate-900 outline-none focus:border-slate-400"
-                placeholder="رمز الإدارة"
-                value={adminCode}
-                onChange={(e) => setAdminCode(e.target.value)}
-              />
-              <button
-                type="button"
-                onClick={() => resolveStore(false)}
-                className="h-11 rounded-xl border border-white/60 bg-white/70 text-sm font-semibold text-slate-700 transition hover:border-slate-500"
-              >
-                ربط المتجر بالكود
-              </button>
-            </div>
+            {activeSection === "dashboard" && (
+              <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h2 className="text-lg font-semibold">???? ??????</h2>
+                    <p className="mt-1 text-sm text-slate-500">
+                      ???? ???????? ???????? ??????.
+                    </p>
+                  </div>
+                  <LayoutDashboard className="h-5 w-5 text-slate-500" />
+                </div>
 
-            {storeId && (
-              <div className="mt-4 rounded-2xl border border-white/60 bg-white/70 px-4 py-3 text-sm text-slate-700">
-                <p className="text-xs text-slate-500">المتجر الحالي</p>
-                <p className="mt-1 font-semibold text-slate-900">
-                  {storeLabel ?? "تم ربط المتجر"}
-                </p>
-              </div>
+                <div className="mt-4 grid gap-4 md:grid-cols-3">
+                  <div className="rounded-lg border border-slate-200 p-4">
+                    <p className="text-xs text-slate-500">??????</p>
+                    <p className="mt-1 text-sm font-semibold text-slate-900">
+                      {storeLabel ?? "??? ?????"}
+                    </p>
+                    <p className="mt-2 text-xs text-slate-500">
+                      ?????: {storeId || "-"}
+                    </p>
+                  </div>
+                  <div className="rounded-lg border border-slate-200 p-4">
+                    <p className="text-xs text-slate-500">???????? ???????</p>
+                    <p className="mt-1 text-2xl font-semibold text-slate-900">
+                      {activeDriversCount}
+                    </p>
+                    <p className="mt-1 text-xs text-slate-500">
+                      ???? ????: {onlineDriversCount}
+                    </p>
+                  </div>
+                  <div className="rounded-lg border border-slate-200 p-4">
+                    <p className="text-xs text-slate-500">????? ?????</p>
+                    <p className="mt-1 text-2xl font-semibold text-slate-900">
+                      {stats.total}
+                    </p>
+                    <p className="mt-1 text-xs text-slate-500">
+                      ??? ???????: {stats.delivering}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="mt-6">
+                  <p className="text-sm font-semibold text-slate-800">??? ???????</p>
+                  <div className="mt-3 overflow-x-auto">
+                    <table className="w-full text-right text-sm">
+                      <thead className="text-xs text-slate-500">
+                        <tr>
+                          <th className="py-2">?????</th>
+                          <th>??????</th>
+                          <th>?????</th>
+                          <th>??????</th>
+                          <th className="text-left">??????</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-200">
+                        {recentOrders.map((order) => (
+                          <tr key={order.id}>
+                            <td className="py-3 font-semibold text-slate-900">
+                              {order.id.slice(0, 8)}...
+                            </td>
+                            <td className="text-slate-700">
+                              {order.customer_name ?? "-"}
+                            </td>
+                            <td className="text-slate-700">
+                              {order.order_type ?? "-"}
+                            </td>
+                            <td>
+                              <span
+                                className={`inline-flex items-center rounded-full border px-2 py-1 text-xs font-medium ${
+                                  statusStyles[order.status ?? ""] ??
+                                  "border-slate-200 bg-slate-100 text-slate-700"
+                                }`}
+                              >
+                                {formatStatus(order.status)}
+                              </span>
+                            </td>
+                            <td className="text-left text-slate-700">
+                              {typeof order.delivery_fee === "number"
+                                ? order.delivery_fee.toFixed(2)
+                                : "-"}
+                            </td>
+                          </tr>
+                        ))}
+                        {recentOrders.length === 0 && (
+                          <tr>
+                            <td colSpan={5} className="py-6 text-center text-slate-500">
+                              ?? ???? ????? ???.
+                            </td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </section>
             )}
 
-            <form onSubmit={createStore} className="mt-5 grid gap-3">
-              <input
-                className="h-11 rounded-xl border border-white/60 bg-white/70 px-4 text-sm text-slate-900 outline-none focus:border-slate-400"
-                placeholder="اسم المتجر"
-                value={storeName}
-                onChange={(e) => setStoreName(e.target.value)}
-              />
-              <button className="h-11 rounded-xl bg-indigo-200 text-sm font-semibold text-slate-900 transition hover:bg-indigo-300">
-                إنشاء المتجر
-              </button>
-            </form>
-          </section>
-
-          <section
-            id="drivers"
-            className={`rounded-3xl border border-white/60 bg-white/70 p-6 shadow-[0_24px_60px_-40px_rgba(0,0,0,0.85)] backdrop-blur-xl ${
-              activeSection === "drivers" ? "" : "hidden"
-            }`}
-          >
-            <div className="flex items-center gap-2 text-lg font-semibold">
-              <CheckCircleIcon className="h-5 w-5 text-orange-400" />
-              مدخل السائق
-            </div>
-            <p className="mt-1 text-sm text-slate-500">
-              توليد كود سري آمن للسائق تلقائياً.
-            </p>
-            <form onSubmit={createDriver} className="mt-5 grid gap-3">
-              <input
-                className="h-11 rounded-xl border border-white/60 bg-white/70 px-4 text-sm text-slate-900 outline-none focus:border-slate-400"
-                placeholder="اسم السائق"
-                value={driverName}
-                onChange={(e) => setDriverName(e.target.value)}
-              />
-              <input
-                className="h-11 rounded-xl border border-white/60 bg-white/70 px-4 text-sm text-slate-900 outline-none focus:border-slate-400"
-                placeholder="هاتف السائق"
-                value={driverPhone}
-                onChange={(e) => setDriverPhone(e.target.value)}
-              />
-              <input
-                className="h-11 rounded-xl border border-white/60 bg-white/70 px-4 text-sm text-slate-900 outline-none focus:border-slate-400"
-                placeholder="البريد الإلكتروني"
-                value={driverEmail}
-                onChange={(e) => setDriverEmail(e.target.value)}
-              />
-              <input
-                className="h-11 rounded-xl border border-white/60 bg-white/70 px-4 text-sm text-slate-900 outline-none focus:border-slate-400"
-                placeholder="رابط صورة السائق (اختياري)"
-                value={driverPhotoUrl}
-                onChange={(e) => setDriverPhotoUrl(e.target.value)}
-              />
-              <button className="h-11 rounded-xl bg-orange-200 text-sm font-semibold text-slate-900 transition hover:bg-orange-300">
-                توليد وإنشاء السائق
-              </button>
-            </form>
-
-            {driverCode && (
-              <div className="mt-5 rounded-2xl border border-orange-500/30 bg-orange-500/10 p-4">
-                <p className="text-xs tracking-[0.2em] text-orange-200">
-                  الكود السري للسائق
-                </p>
-                <div className="mt-2 flex items-center justify-between gap-3">
-                  <span className="text-2xl font-semibold text-orange-100">
-                    {driverCode}
-                  </span>
+            {activeSection === "settings" && (
+              <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h2 className="text-lg font-semibold">????????? ????????</h2>
+                    <p className="mt-1 text-sm text-slate-500">
+                      ????? ?????? ?????? ???? ??? ???????.
+                    </p>
+                  </div>
+                  <Settings className="h-5 w-5 text-slate-500" />
+                </div>
+                <div className="mt-5 grid gap-3">
+                  <input
+                    className="h-11 rounded-lg border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-slate-400"
+                    placeholder="??? ???????"
+                    value={adminCode}
+                    onChange={(e) => setAdminCode(e.target.value)}
+                  />
                   <button
-                    onClick={copyCode}
-                    className="inline-flex items-center gap-2 rounded-xl border border-orange-400/40 px-3 py-2 text-xs text-orange-100 transition hover:bg-orange-500/20"
                     type="button"
+                    onClick={() => resolveStore(false)}
+                    className="h-11 rounded-lg border border-slate-200 bg-white text-sm font-semibold text-slate-700 transition hover:border-slate-400"
                   >
-                    <ClipboardIcon className="h-4 w-4" />
-                    نسخ
+                    ??? ?????? ??????
                   </button>
                 </div>
+
+                {storeId && (
+                  <div className="mt-4 rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700">
+                    <p className="text-xs text-slate-500">?????? ??????</p>
+                    <p className="mt-1 font-semibold text-slate-900">
+                      {storeLabel ?? "?? ??? ??????"}
+                    </p>
+                  </div>
+                )}
+
+                <form onSubmit={createStore} className="mt-6 grid gap-3">
+                  <input
+                    className="h-11 rounded-lg border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-slate-400"
+                    placeholder="??? ??????"
+                    value={storeName}
+                    onChange={(e) => setStoreName(e.target.value)}
+                  />
+                  <button className="h-11 rounded-lg bg-orange-500 text-sm font-semibold text-white transition hover:bg-orange-600">
+                    ????? ??????
+                  </button>
+                </form>
+              </section>
+            )}
+
+            {activeSection === "drivers" && (
+              <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+                <div className="flex items-center gap-2 text-lg font-semibold">
+                  <UserPlus className="h-5 w-5 text-slate-600" />
+                  ????? ????????
+                </div>
+                <p className="mt-1 text-sm text-slate-500">
+                  ????? ???????? ??????? ??????? ???????.
+                </p>
+                <form onSubmit={createDriver} className="mt-5 grid gap-3 md:grid-cols-3">
+                  <input
+                    className="h-11 rounded-lg border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-slate-400"
+                    placeholder="??? ??????"
+                    value={driverName}
+                    onChange={(e) => setDriverName(e.target.value)}
+                  />
+                  <input
+                    className="h-11 rounded-lg border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-slate-400"
+                    placeholder="???? ??????"
+                    value={driverPhone}
+                    onChange={(e) => setDriverPhone(e.target.value)}
+                  />
+                  <input
+                    className="h-11 rounded-lg border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-slate-400"
+                    placeholder="?????? ??????????"
+                    value={driverEmail}
+                    onChange={(e) => setDriverEmail(e.target.value)}
+                  />
+                  <button className="h-11 rounded-lg bg-orange-500 text-sm font-semibold text-white transition hover:bg-orange-600 md:col-span-3">
+                    ????? ??????
+                  </button>
+                </form>
+
+                {driverCode && (
+                  <div className="mt-5 rounded-lg border border-slate-200 bg-slate-50 p-4">
+                    <p className="text-xs text-slate-500">????? ????? ??????</p>
+                    <div className="mt-2 flex items-center justify-between gap-3">
+                      <span className="text-xl font-semibold text-slate-900">
+                        {driverCode}
+                      </span>
+                      <button
+                        onClick={copyCode}
+                        className="inline-flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-xs text-slate-700 transition hover:border-slate-400"
+                        type="button"
+                      >
+                        <Copy className="h-4 w-4" />
+                        ???
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                <div className="mt-6 rounded-lg border border-slate-200 bg-white p-4">
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm font-semibold text-slate-900">????? ????????</p>
+                    <button
+                      type="button"
+                      onClick={fetchDrivers}
+                      className="inline-flex items-center gap-2 text-xs text-slate-500"
+                    >
+                      <RefreshCw className="h-4 w-4" />
+                      ?????
+                    </button>
+                  </div>
+                  <div className="mt-3 space-y-2 text-sm">
+                    {driversLoading && (
+                      <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-3 text-center text-slate-500">
+                        ???? ????? ????????...
+                      </div>
+                    )}
+                    {!driversLoading && drivers.length == 0 && (
+                      <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-3 text-center text-slate-500">
+                        ?? ???? ?????? ???.
+                      </div>
+                    )}
+                    {drivers.map((driver) => {
+                      const isActive = driver.is_active != 0;
+                      const statusLabel = driver.status == "online" ? "????" : "??? ????";
+                      return (
+                        <div
+                          key={driver.id}
+                          className="flex flex-col gap-3 rounded-lg border border-slate-200 px-3 py-3 md:flex-row md:items-center md:justify-between"
+                        >
+                          <div>
+                            <p className="text-sm font-semibold text-slate-900">
+                              {driver.name ?? "???? ???"}
+                            </p>
+                            <p className="mt-1 text-xs text-slate-500">
+                              {driver.phone ?? "-"} ? {driver.email ?? "-"}
+                            </p>
+                          </div>
+                          <div className="flex flex-wrap items-center gap-2 text-xs">
+                            <span className="rounded-full border border-slate-200 bg-slate-100 px-2 py-1 text-slate-700">
+                              {statusLabel}
+                            </span>
+                            <span className="rounded-full border border-slate-200 bg-white px-2 py-1 text-slate-700">
+                              {isActive ? "?????" : "?????"}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => setDriverActive(driver.id, !isActive)}
+                              className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
+                                isActive
+                                  ? "border border-slate-200 bg-white text-slate-700 hover:border-slate-400"
+                                  : "bg-orange-500 text-white hover:bg-orange-600"
+                              }`}
+                            >
+                              {isActive ? "?????" : "?????"}
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </section>
+            )}
+
+            {activeSection === "finance" && (
+              <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h2 className="text-lg font-semibold">???????? ???????</h2>
+                    <p className="mt-1 text-sm text-slate-500">
+                      ????? ??????? ?????? ?????? ??????.
+                    </p>
+                  </div>
+                  <Wallet className="h-5 w-5 text-slate-500" />
+                </div>
+
+                {!adminCode && (
+                  <div className="mt-4 rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
+                    ???? ??? ??????? ????? ?????? ??? ???????? ???????.
+                  </div>
+                )}
+
+                {adminCode && biometricSupported && !financeUnlocked && (
+                  <div className="mt-4 rounded-lg border border-slate-200 bg-slate-50 p-5">
+                    <div className="flex items-center gap-2 text-sm font-semibold text-slate-800">
+                      <ShieldCheck className="h-4 w-4" />
+                      ????? ?????? ??????
+                    </div>
+                    <p className="mt-2 text-xs text-slate-500">
+                      ????? ??? ????? ?????? ??????? ??? ??? ???????? ???????.
+                    </p>
+                    <div className="mt-4 flex flex-wrap gap-2">
+                      {!biometricLinked && (
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            const ok = await registerFinanceBiometric();
+                            if (ok) setBiometricLinked(true);
+                          }}
+                          className="h-10 rounded-lg border border-slate-200 bg-white px-4 text-xs font-semibold text-slate-700"
+                        >
+                          ????? ??????
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          const ok = await ensureFinanceAccess();
+                          if (ok) setFinanceUnlocked(true);
+                        }}
+                        className="h-10 rounded-lg bg-orange-500 px-4 text-xs font-semibold text-white"
+                      >
+                        ???? ????
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {adminCode && (!biometricSupported || financeUnlocked) && (
+                  <div className="mt-6 grid gap-6 lg:grid-cols-2">
+                    <div className="rounded-lg border border-slate-200 bg-white p-4">
+                      <p className="text-sm font-semibold text-slate-900">
+                        ?????? ???????
+                      </p>
+                      <div className="mt-4 grid gap-3">
+                        <input
+                          className="h-11 rounded-lg border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-slate-400"
+                          placeholder="????? ??????"
+                          value={walletDriverId}
+                          onChange={(e) => setWalletDriverId(e.target.value)}
+                        />
+                        <input
+                          type="number"
+                          step="0.01"
+                          className="h-11 rounded-lg border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-slate-400"
+                          placeholder="??????"
+                          value={walletAmount}
+                          onChange={(e) => setWalletAmount(e.target.value)}
+                        />
+                        <select
+                          className="h-11 rounded-lg border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-slate-400"
+                          value={walletMethod}
+                          onChange={(e) => setWalletMethod(e.target.value)}
+                        >
+                          <option value="wallet">????? ?????</option>
+                          <option value="card">????? ??????</option>
+                          <option value="cash">?????</option>
+                          <option value="bank_transfer">????? ??????</option>
+                        </select>
+                        <input
+                          className="h-11 rounded-lg border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-slate-400"
+                          placeholder="?????? (???????)"
+                          value={walletNote}
+                          onChange={(e) => setWalletNote(e.target.value)}
+                        />
+                        <div className="grid gap-3 sm:grid-cols-2">
+                          <button
+                            type="button"
+                            onClick={() => updateWallet("credit")}
+                            className="h-11 rounded-lg bg-orange-500 text-sm font-semibold text-white hover:bg-orange-600"
+                          >
+                            ??? ???????
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => updateWallet("debit")}
+                            className="h-11 rounded-lg border border-slate-200 bg-white text-sm font-semibold text-slate-700 hover:border-slate-400"
+                          >
+                            ??? ??????
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="rounded-lg border border-slate-200 bg-white p-4">
+                      <div className="flex items-center justify-between">
+                        <p className="text-sm font-semibold text-slate-900">
+                          ????? ?????? ??????
+                        </p>
+                        <select
+                          className="rounded-lg border border-slate-200 bg-white px-3 py-1 text-xs text-slate-700"
+                          value={ledgerPeriod}
+                          onChange={(e) => setLedgerPeriod(e.target.value)}
+                        >
+                          <option value="daily">????</option>
+                          <option value="weekly">??????</option>
+                          <option value="monthly">????</option>
+                        </select>
+                      </div>
+
+                      <div className="mt-4 grid gap-4 text-sm">
+                        <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
+                          <p className="text-xs text-slate-500">????? ???????</p>
+                          {ledgerSummary.slice(0, 4).map((row) => (
+                            <div
+                              key={`orders-${row.period}`}
+                              className="mt-2 flex items-center justify-between text-xs"
+                            >
+                              <span>{row.period}</span>
+                              <span className="font-semibold">
+                                {Number(row.delivery_total || 0).toFixed(2)}
+                              </span>
+                            </div>
+                          ))}
+                          {ledgerSummary.length == 0 && (
+                            <p className="mt-2 text-xs text-slate-500">?? ???? ??????.</p>
+                          )}
+                        </div>
+
+                        <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
+                          <p className="text-xs text-slate-500">????? ???????</p>
+                          {ledgerWallet.slice(0, 4).map((row) => (
+                            <div
+                              key={`wallet-${row.period}`}
+                              className="mt-2 flex items-center justify-between text-xs"
+                            >
+                              <span>{row.period}</span>
+                              <span className="font-semibold">
+                                {Number(row.credits || 0).toFixed(2)} / {Number(row.debits || 0).toFixed(2)}
+                              </span>
+                            </div>
+                          ))}
+                          {ledgerWallet.length == 0 && (
+                            <p className="mt-2 text-xs text-slate-500">?? ???? ??????.</p>
+                          )}
+                        </div>
+
+                        <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
+                          <p className="text-xs text-slate-500">???? ????????</p>
+                          {ledgerDrivers.slice(0, 4).map((row) => (
+                            <div
+                              key={`driver-${row.driver_id}-${row.period}`}
+                              className="mt-2 flex items-center justify-between text-xs"
+                            >
+                              <span>{row.driver_name ?? row.driver_id.slice(0, 6)}</span>
+                              <span className="font-semibold">
+                                {Number(row.delivery_total || 0).toFixed(2)}
+                              </span>
+                            </div>
+                          ))}
+                          {ledgerDrivers.length == 0 && (
+                            <p className="mt-2 text-xs text-slate-500">?? ???? ??????.</p>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </section>
+            )}
+
+            {activeSection === "inventory" && (
+              <div className="space-y-6">
+                <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+                  <div className="flex items-center gap-2 text-lg font-semibold">
+                    <PackagePlus className="h-5 w-5 text-slate-600" />
+                    ????? ???
+                  </div>
+                  <form onSubmit={createOrder} className="mt-5 grid gap-3 md:grid-cols-2">
+                    <input
+                      name="customer_name"
+                      className="h-11 rounded-lg border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-slate-400"
+                      placeholder="??? ??????"
+                      required
+                    />
+                    <input
+                      name="receiver_name"
+                      className="h-11 rounded-lg border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-slate-400"
+                      placeholder="??? ???????"
+                      required
+                    />
+                    <input
+                      name="customer_location_text"
+                      className="h-11 rounded-lg border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-slate-400"
+                      placeholder="???? ?????"
+                      required
+                    />
+                    <input
+                      name="order_type"
+                      className="h-11 rounded-lg border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-slate-400"
+                      placeholder="??? ?????"
+                      required
+                    />
+                    <input
+                      name="price"
+                      type="number"
+                      step="0.01"
+                      className="h-11 rounded-lg border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-slate-400"
+                      placeholder="??? ?????"
+                    />
+                    <input
+                      name="delivery_fee"
+                      type="number"
+                      step="0.01"
+                      className="h-11 rounded-lg border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-slate-400"
+                      placeholder="???? ???????"
+                    />
+                    <select
+                      name="payout_method"
+                      className="h-11 rounded-lg border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-slate-400"
+                      defaultValue=""
+                      required
+                    >
+                      <option value="" disabled>
+                        ????? ??? ??????? ??????
+                      </option>
+                      <option value="card">????? ??????</option>
+                      <option value="wallet">????? ?????</option>
+                      <option value="cash">?????</option>
+                      <option value="bank_transfer">????? ??????</option>
+                    </select>
+                    <input
+                      name="driver_id"
+                      className="h-11 rounded-lg border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-slate-400"
+                      placeholder="????? ?????? (???????)"
+                    />
+                    <button className="h-11 rounded-lg bg-orange-500 text-sm font-semibold text-white transition hover:bg-orange-600 md:col-span-2">
+                      ????? ?????
+                    </button>
+                  </form>
+                </section>
+
+                <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+                  <div className="flex items-center justify-between">
+                    <p className="text-lg font-semibold">????? ????????</p>
+                    <button
+                      type="button"
+                      onClick={() => refreshOrders(true)}
+                      className="inline-flex items-center gap-2 text-xs text-slate-500"
+                    >
+                      <RefreshCw className="h-4 w-4" />
+                      ?????
+                    </button>
+                  </div>
+                  <div className="mt-4 overflow-x-auto">
+                    <table className="w-full text-right text-sm">
+                      <thead className="text-xs text-slate-500">
+                        <tr>
+                          <th className="py-2">?????</th>
+                          <th>??????</th>
+                          <th>???????</th>
+                          <th>?????</th>
+                          <th>??????</th>
+                          <th>??????</th>
+                          <th>?????</th>
+                          <th className="text-left">??????</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-200">
+                        {orders.map((order) => (
+                          <tr
+                            key={order.id}
+                            className={`${
+                              flashIds.has(order.id)
+                                ? "bg-orange-50"
+                                : "bg-transparent"
+                            }`}
+                          >
+                            <td className="py-3 font-semibold text-slate-900">
+                              {order.id.slice(0, 8)}...
+                            </td>
+                            <td className="text-slate-700">
+                              {order.customer_name ?? "-"}
+                            </td>
+                            <td className="text-slate-700">
+                              {order.receiver_name ?? "-"}
+                            </td>
+                            <td className="text-slate-700">
+                              {order.order_type ?? "-"}
+                            </td>
+                            <td className="text-slate-500">
+                              {order.driver_id
+                                ? `${order.driver_id.slice(0, 8)}...`
+                                : "-"}
+                            </td>
+                            <td>
+                              <span
+                                className={`inline-flex items-center rounded-full border px-2 py-1 text-xs font-medium ${
+                                  statusStyles[order.status ?? ""] ??
+                                  "border-slate-200 bg-slate-100 text-slate-700"
+                                }`}
+                              >
+                                {formatStatus(order.status)}
+                              </span>
+                            </td>
+                            <td className="text-slate-700">
+                              {formatPayout(order.payout_method)}
+                            </td>
+                            <td className="text-left text-slate-700">
+                              {typeof order.delivery_fee === "number"
+                                ? order.delivery_fee.toFixed(2)
+                                : "-"}
+                            </td>
+                          </tr>
+                        ))}
+                        {orders.length == 0 && (
+                          <tr>
+                            <td colSpan={8} className="py-6 text-center text-slate-500">
+                              ?? ???? ????? ???.
+                            </td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </section>
               </div>
             )}
-          </section>
-
-        <div
-          className={`grid gap-6 lg:grid-cols-2 ${
-            activeSection === "wallet" || activeSection === "remove"
-              ? ""
-              : "hidden"
-          }`}
-        >
-          <section
-            id="wallet"
-            className={`rounded-3xl border border-white/60 bg-white/70 p-6 shadow-[0_24px_60px_-40px_rgba(0,0,0,0.85)] backdrop-blur-xl ${
-              activeSection === "wallet" ? "" : "hidden"
-            }`}
-          >
-            <div className="flex items-center gap-2 text-lg font-semibold">
-              إدارة محفظة السائق
-            </div>
-            <p className="mt-1 text-sm text-slate-500">
-              شحن أو سحب مستحقات السائق حسب طريقة الدفع.
-            </p>
-            <div className="mt-4 grid gap-3">
-              <input
-                className="h-11 rounded-xl border border-white/60 bg-white/70 px-4 text-sm text-slate-900 outline-none focus:border-slate-400"
-                placeholder="معرّف السائق"
-                value={walletDriverId}
-                onChange={(e) => setWalletDriverId(e.target.value)}
-              />
-              <input
-                type="number"
-                step="0.01"
-                className="h-11 rounded-xl border border-white/60 bg-white/70 px-4 text-sm text-slate-900 outline-none focus:border-slate-400"
-                placeholder="المبلغ"
-                value={walletAmount}
-                onChange={(e) => setWalletAmount(e.target.value)}
-              />
-              <select
-                className="h-11 rounded-xl border border-white/60 bg-white/70 px-4 text-sm text-slate-900 outline-none focus:border-slate-400"
-                value={walletMethod}
-                onChange={(e) => setWalletMethod(e.target.value)}
-              >
-                <option value="wallet">محفظة محلية</option>
-                <option value="card">بطاقة مصرفية</option>
-                <option value="cash">نقداً</option>
-                <option value="bank_transfer">حوالة مصرفية</option>
-              </select>
-              <input
-                className="h-11 rounded-xl border border-white/60 bg-white/70 px-4 text-sm text-slate-900 outline-none focus:border-slate-400"
-                placeholder="ملاحظة (اختياري)"
-                value={walletNote}
-                onChange={(e) => setWalletNote(e.target.value)}
-              />
-              <div className="grid gap-3 sm:grid-cols-2">
-                <button
-                  type="button"
-                  onClick={() => updateWallet("credit")}
-                  className="h-11 rounded-xl bg-orange-200 text-sm font-semibold text-slate-900 transition hover:bg-orange-300"
-                >
-                  شحن المحفظة
-                </button>
-                <button
-                  type="button"
-                  onClick={() => updateWallet("debit")}
-                  className="h-11 rounded-xl border border-rose-200 bg-rose-50 text-sm font-semibold text-rose-700 transition hover:bg-rose-100"
-                >
-                  سحب المبلغ
-                </button>
-              </div>
-            </div>
-          </section>
-
-          <section
-            id="driver-remove"
-            className={`rounded-3xl border border-white/60 bg-white/70 p-6 shadow-[0_24px_60px_-40px_rgba(0,0,0,0.85)] backdrop-blur-xl ${
-              activeSection === "remove" ? "" : "hidden"
-            }`}
-          >
-            <div className="flex items-center gap-2 text-lg font-semibold">
-              حذف السائق نهائياً
-            </div>
-            <p className="mt-1 text-sm text-slate-500">
-              استخدم هذه الخاصية عند مغادرة السائق للعمل.
-            </p>
-            <div className="mt-4 grid gap-3">
-              <input
-                className="h-11 rounded-xl border border-white/60 bg-white/70 px-4 text-sm text-slate-900 outline-none focus:border-slate-400"
-                placeholder="معرّف السائق"
-                value={deleteDriverId}
-                onChange={(e) => setDeleteDriverId(e.target.value)}
-              />
-              <button
-                type="button"
-                onClick={removeDriver}
-                className="h-11 rounded-xl border border-rose-200 bg-rose-50 text-sm font-semibold text-rose-700 transition hover:bg-rose-100"
-              >
-                حذف السائق نهائياً
-              </button>
-            </div>
-          </section>
-        </div>
-
-        <section
-          id="order-create"
-          className={`rounded-3xl border border-white/60 bg-white/70 p-6 shadow-[0_24px_60px_-40px_rgba(0,0,0,0.85)] backdrop-blur-xl ${
-            activeSection === "create" ? "" : "hidden"
-          }`}
-        >
-          <div className="flex items-center gap-2 text-lg font-semibold">
-            <BoltIcon className="h-5 w-5 text-indigo-400" />
-            إنشاء طلب
-          </div>
-          <form onSubmit={createOrder} className="mt-5 grid gap-3 md:grid-cols-2">
-            <input
-              name="customer_name"
-              className="h-11 rounded-xl border border-white/60 bg-white/70 px-4 text-sm text-slate-900 outline-none focus:border-slate-400"
-              placeholder="اسم العميل"
-              required
-            />
-            <input
-              name="receiver_name"
-              className="h-11 rounded-xl border border-white/60 bg-white/70 px-4 text-sm text-slate-900 outline-none focus:border-slate-400"
-              placeholder="اسم المستلم"
-              required
-            />
-            <input
-              name="customer_location_text"
-              className="h-11 rounded-xl border border-white/60 bg-white/70 px-4 text-sm text-slate-900 outline-none focus:border-slate-400"
-              placeholder="موقع الطلب"
-              required
-            />
-            <input
-              name="order_type"
-              className="h-11 rounded-xl border border-white/60 bg-white/70 px-4 text-sm text-slate-900 outline-none focus:border-slate-400"
-              placeholder="نوع الطلب"
-              required
-            />
-            <input
-              name="price"
-              type="number"
-              step="0.01"
-              className="h-11 rounded-xl border border-white/60 bg-white/70 px-4 text-sm text-slate-900 outline-none focus:border-slate-400"
-              placeholder="سعر الطلب"
-            />
-            <input
-              name="delivery_fee"
-              type="number"
-              step="0.01"
-              className="h-11 rounded-xl border border-white/60 bg-white/70 px-4 text-sm text-slate-900 outline-none focus:border-slate-400"
-              placeholder="رسوم التوصيل"
-            />
-            <select
-              name="payout_method"
-              className="h-11 rounded-xl border border-white/60 bg-white/70 px-4 text-sm text-slate-900 outline-none focus:border-slate-400"
-              defaultValue=""
-              required
-            >
-              <option value="" disabled>
-                طريقة دفع مستحقات السائق
-              </option>
-              <option value="card">بطاقة مصرفية</option>
-              <option value="wallet">محفظة محلية</option>
-              <option value="cash">نقداً</option>
-              <option value="bank_transfer">حوالة مصرفية</option>
-            </select>
-            <input
-              name="driver_id"
-              className="h-11 rounded-xl border border-white/60 bg-white/70 px-4 text-sm text-slate-900 outline-none focus:border-slate-400"
-              placeholder="معرّف السائق (اختياري)"
-            />
-            <button className="h-11 rounded-xl bg-indigo-200 text-sm font-semibold text-slate-900 transition hover:bg-indigo-300 md:col-span-2">
-              إنشاء الطلب
-            </button>
-          </form>
-        </section>
-
-        <section
-          id="orders"
-          className={`rounded-3xl border border-white/60 bg-white/70 p-6 shadow-[0_24px_60px_-40px_rgba(0,0,0,0.85)] backdrop-blur-xl ${
-            activeSection === "orders" ? "" : "hidden"
-          }`}
-        >
-          <div className="flex items-center gap-2 text-lg font-semibold">
-            الطلبات المباشرة
-          </div>
-          <div className="mt-4 overflow-x-auto">
-            <table className="w-full text-right text-sm">
-              <thead className="text-xs uppercase tracking-[0.2em] text-slate-500">
-                <tr>
-                  <th className="py-2">الطلب</th>
-                  <th>العميل</th>
-                  <th>المستلم</th>
-                  <th>النوع</th>
-                  <th>السائق</th>
-                  <th>الحالة</th>
-                  <th>الدفع</th>
-                  <th className="text-left">الرسوم</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-800">
-                {orders.map((order) => (
-                  <tr
-                    key={order.id}
-                    className={`transition ${
-                      flashIds.has(order.id)
-                        ? "bg-amber-500/10"
-                        : "bg-transparent"
-                    }`}
-                  >
-                    <td className="py-3 font-semibold text-slate-900">
-                      {order.id.slice(0, 8)}...
-                    </td>
-                    <td className="text-slate-700">{order.customer_name ?? "-"}</td>
-                    <td className="text-slate-700">{order.receiver_name ?? "-"}</td>
-                    <td className="text-slate-700">{order.order_type ?? "-"}</td>
-                    <td className="text-slate-500">
-                      {order.driver_id ? `${order.driver_id.slice(0, 8)}...` : "-"}
-                    </td>
-                    <td>
-                      <span
-                        className={`inline-flex items-center rounded-full border px-3 py-1 text-xs font-medium ${
-                          statusStyles[order.status ?? ""] ??
-                          "border-white/60 bg-slate-800 text-slate-700"
-                        }`}
-                      >
-                        {formatStatus(order.status)}
-                      </span>
-                    </td>
-                    <td className="text-slate-700">
-                      {formatPayout(order.payout_method)}
-                    </td>
-                    <td className="text-left text-slate-700">
-                      {typeof order.delivery_fee === "number"
-                        ? order.delivery_fee.toFixed(2)
-                        : "-"}
-                    </td>
-                  </tr>
-                ))}
-                {orders.length === 0 && (
-                  <tr>
-                    <td colSpan={8} className="py-6 text-center text-slate-500">
-                      لا توجد طلبات بعد.
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-        </section>
       </main>
 
       <aside className="order-1 lg:order-2">
-        <div className="rounded-3xl border border-white/60 bg-white/70 p-5 shadow-[0_24px_60px_-40px_rgba(0,0,0,0.85)] backdrop-blur-xl lg:sticky lg:top-6">
+        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm lg:sticky lg:top-6">
           <p className="text-xs tracking-[0.25em] text-slate-500">الأقسام</p>
           <div className="mt-4 grid gap-2">
             {sectionNav.map((item) => (
@@ -1032,6 +1580,7 @@ export default function StorePanel() {
                   activeSection === item.key ? navButtonActive : navButtonInactive
                 }`}
               >
+                <item.icon className="h-4 w-4" />
                 {item.label}
               </button>
             ))}
@@ -1039,10 +1588,10 @@ export default function StorePanel() {
           <button
             type="button"
             onClick={clearStore}
-            className="mt-6 flex w-full items-center justify-between rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-700"
+            className="mt-6 flex w-full items-center justify-between rounded-lg border border-slate-200 bg-slate-100 px-4 py-3 text-sm font-semibold text-slate-800"
           >
             تسجيل الخروج
-            <ArrowRightOnRectangleIcon className="h-4 w-4" />
+            <LogOut className="h-4 w-4" />
           </button>
         </div>
       </aside>
@@ -1051,5 +1600,9 @@ export default function StorePanel() {
   </div>
   );
 }
+
+
+
+
 
 
