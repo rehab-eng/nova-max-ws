@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import Image from "next/image";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -70,15 +70,15 @@ type ApiResponse = Record<string, any>;
 type SectionKey = "dashboard" | "drivers" | "finance" | "inventory" | "settings";
 
 const sectionNav: Array<{ key: SectionKey; label: string; icon: typeof LayoutDashboard }> = [
-  { key: "dashboard", label: "لوحة التحكم", icon: LayoutDashboard },
-  { key: "drivers", label: "إدارة السائقين", icon: Users },
-  { key: "finance", label: "العمليات المالية", icon: Wallet },
-  { key: "inventory", label: "الجرد", icon: ClipboardList },
-  { key: "settings", label: "الإعدادات", icon: Settings },
+  { key: "dashboard", label: "�"�^حة ا�"تح�f�.", icon: LayoutDashboard },
+  { key: "drivers", label: "إدارة ا�"سائ�,�S�?", icon: Users },
+  { key: "finance", label: "ا�"ع�.�"�Sات ا�"�.ا�"�Sة", icon: Wallet },
+  { key: "inventory", label: "ا�"جرد", icon: ClipboardList },
+  { key: "settings", label: "ا�"إعدادات", icon: Settings },
 ];
 
 const navButtonBase =
-  "rounded-lg border px-3 py-2 text-sm font-semibold transition flex flex-row-reverse items-center gap-2";
+  "rounded-lg border px-3 py-2 text-sm font-semibold transition flex items-center justify-between";
 const navButtonActive = "border-slate-900 bg-slate-900 text-white";
 const navButtonInactive =
   "border-slate-200 bg-white text-slate-700 hover:border-slate-400";
@@ -92,11 +92,11 @@ const statusStyles: Record<string, string> = {
 };
 
 const statusLabels: Record<string, string> = {
-  pending: "قيد الانتظار",
-  accepted: "تم القبول",
-  delivering: "قيد التوصيل",
-  delivered: "تم التسليم",
-  cancelled: "ملغي",
+  pending: "�,�Sد ا�"ا�?تظار",
+  accepted: "ت�. ا�"�,ب�^�"",
+  delivering: "�,�Sد ا�"ت�^ص�S�"",
+  delivered: "ت�. ا�"تس�"�S�.",
+  cancelled: "�.�"غ�S",
 };
 
 function formatStatus(value: string | null | undefined): string {
@@ -105,10 +105,10 @@ function formatStatus(value: string | null | undefined): string {
 }
 
 const payoutLabels: Record<string, string> = {
-  card: "بطاقة مصرفية",
-  wallet: "محفظة محلية",
-  cash: "نقداً",
-  bank_transfer: "حوالة مصرفية",
+  card: "بطا�,ة �.صرف�Sة",
+  wallet: "�.حفظة �.ح�"�Sة",
+  cash: "�?�,دا�<",
+  bank_transfer: "ح�^ا�"ة �.صرف�Sة",
 };
 
 function formatPayout(value: string | null | undefined): string {
@@ -249,7 +249,7 @@ export default function StorePanel() {
       });
       return true;
     } catch {
-      toast.error("فشل التحقق بالبصمة.");
+      toast.error("فش�" ا�"تح�,�, با�"بص�.ة.");
       return false;
     }
   };
@@ -286,7 +286,7 @@ export default function StorePanel() {
         return true;
       }
     } catch {
-      toast.error("تعذر تفعيل البصمة.");
+      toast.error("تعذر تفع�S�" ا�"بص�.ة.");
     }
     return false;
   };
@@ -315,7 +315,7 @@ export default function StorePanel() {
 
   const resolveStore = async (silent = true) => {
     if (!adminCode) return;
-    const toastId = silent ? null : toast.loading("جاري ربط المتجر...");
+    const toastId = silent ? null : toast.loading("جار�S ربط ا�"�.تجر...");
     try {
       const res = await fetch(`${API_BASE}/stores/by-admin`, {
         method: "POST",
@@ -326,12 +326,12 @@ export default function StorePanel() {
       if (data?.store?.id) {
         setStoreId(data.store.id);
         setStoreLabel(data.store.name ?? null);
-        if (toastId) toast.success("تم ربط المتجر", { id: toastId });
+        if (toastId) toast.success("ت�. ربط ا�"�.تجر", { id: toastId });
       } else if (toastId) {
-        toast.error(data?.error ?? "تعذر ربط المتجر", { id: toastId });
+        toast.error(data?.error ?? "تعذر ربط ا�"�.تجر", { id: toastId });
       }
     } catch {
-      if (toastId) toast.error("خطأ في الشبكة", { id: toastId });
+      if (toastId) toast.error("خطأ ف�S ا�"شب�fة", { id: toastId });
     }
   };
 
@@ -371,7 +371,7 @@ export default function StorePanel() {
       for (const order of nextOrders) {
         const previous = prevMap.get(order.id);
         if (!previous) {
-          toast.success(`طلب جديد ${order.id.slice(0, 6)}...`);
+          toast.success(`ط�"ب جد�Sد ${order.id.slice(0, 6)}...`);
           flashOrder(order.id);
         } else if (previous.status !== order.status) {
           toast.custom(
@@ -384,7 +384,7 @@ export default function StorePanel() {
                 <div className="flex items-center gap-2 text-slate-900">
                   <PackagePlus className="h-4 w-4 text-slate-600" />
                   <span>
-                    حالة الطلب {order.id.slice(0, 6)}... أصبحت{" "}
+                    حا�"ة ا�"ط�"ب {order.id.slice(0, 6)}... أصبحت{" "}
                     {formatStatus(order.status)}
                   </span>
                 </div>
@@ -414,7 +414,7 @@ export default function StorePanel() {
         if (!hasLoadedRef.current) hasLoadedRef.current = true;
       }
     } catch {
-      if (showToasts) toast.error("تعذر تحميل الطلبات");
+      if (showToasts) toast.error("تعذر تح�.�S�" ا�"ط�"بات");
     }
   };
 
@@ -439,7 +439,7 @@ export default function StorePanel() {
           if (!hasLoadedRef.current) hasLoadedRef.current = true;
         }
       } catch {
-        if (showToasts) toast.error("تعذر تحميل الطلبات");
+        if (showToasts) toast.error("تعذر تح�.�S�" ا�"ط�"بات");
       }
     };
 
@@ -496,11 +496,11 @@ export default function StorePanel() {
             )
           );
         }
-        toast("تم تحديث حالة السائق");
+        toast("ت�. تحد�Sث حا�"ة ا�"سائ�,");
         return;
       }
       if (type === "driver_created") {
-        toast.success("تم إنشاء سائق جديد");
+        toast.success("ت�. إ�?شاء سائ�, جد�Sد");
         fetchDrivers();
         return;
       }
@@ -514,7 +514,7 @@ export default function StorePanel() {
             )
           );
         }
-        toast("تم تعطيل سائق");
+        toast("ت�. تعط�S�" سائ�,");
         return;
       }
       if (type === "driver_active") {
@@ -527,11 +527,11 @@ export default function StorePanel() {
             )
           );
         }
-        toast("تم تفعيل سائق");
+        toast("ت�. تفع�S�" سائ�,");
         return;
       }
       if (type === "wallet_transaction") {
-        toast("تم تحديث محفظة السائق");
+        toast("ت�. تحد�Sث �.حفظة ا�"سائ�,");
         if (activeSection === "finance") {
           fetchLedger(ledgerPeriod);
         }
@@ -637,10 +637,10 @@ export default function StorePanel() {
   const createStore = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!storeName.trim()) {
-      toast.error("اسم المتجر مطلوب");
+      toast.error("اس�. ا�"�.تجر �.ط�"�^ب");
       return;
     }
-    const toastId = toast.loading("جاري إنشاء المتجر...");
+    const toastId = toast.loading("جار�S إ�?شاء ا�"�.تجر...");
     try {
       const res = await fetch(`${API_BASE}/stores`, {
         method: "POST",
@@ -652,26 +652,26 @@ export default function StorePanel() {
         setStoreId(data.store.id);
         setAdminCode(data.store.admin_code ?? "");
         setStoreLabel(data.store.name ?? null);
-        toast.success("تم إنشاء المتجر", { id: toastId });
+        toast.success("ت�. إ�?شاء ا�"�.تجر", { id: toastId });
       } else {
-        toast.error(data?.error ?? "فشل إنشاء المتجر", { id: toastId });
+        toast.error(data?.error ?? "فش�" إ�?شاء ا�"�.تجر", { id: toastId });
       }
     } catch {
-      toast.error("خطأ في الشبكة", { id: toastId });
+      toast.error("خطأ ف�S ا�"شب�fة", { id: toastId });
     }
   };
 
   const createDriver = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!adminCode) {
-      toast.error("رمز الإدارة مطلوب");
+      toast.error("ر�.ز ا�"إدارة �.ط�"�^ب");
       return;
     }
     if (!driverName.trim() || !driverPhone.trim() || !driverEmail.trim()) {
-      toast.error("اسم السائق ورقم الهاتف مطلوبان");
+      toast.error("اس�. ا�"سائ�, �^ر�,�. ا�"�?اتف �.ط�"�^با�?");
       return;
     }
-    const toastId = toast.loading("جاري إنشاء السائق...");
+    const toastId = toast.loading("جار�S إ�?شاء ا�"سائ�,...");
 
     try {
       const payload: Record<string, unknown> = {
@@ -694,14 +694,14 @@ export default function StorePanel() {
         setDriverName("");
         setDriverPhone("");
         setDriverEmail("");
-        toast.success("تم إنشاء السائق", { id: toastId });
-        toast("تم تجهيز صندوق نسخ الكود", { icon: "✨" });
+        toast.success("ت�. إ�?شاء ا�"سائ�,", { id: toastId });
+        toast("ت�. تج�?�Sز ص�?د�^�, �?سخ ا�"�f�^د", { icon: "�o�" });
         fetchDrivers();
       } else {
-        toast.error(data?.error ?? "فشل إنشاء السائق", { id: toastId });
+        toast.error(data?.error ?? "فش�" إ�?شاء ا�"سائ�,", { id: toastId });
       }
     } catch {
-      toast.error("خطأ في الشبكة", { id: toastId });
+      toast.error("خطأ ف�S ا�"شب�fة", { id: toastId });
     }
   };
 
@@ -709,9 +709,9 @@ export default function StorePanel() {
     if (!driverCode) return;
     try {
       await navigator.clipboard.writeText(driverCode);
-      toast.success("تم نسخ الكود");
+      toast.success("ت�. �?سخ ا�"�f�^د");
     } catch {
-      toast.error("تعذر النسخ");
+      toast.error("تعذر ا�"�?سخ");
     }
   };
 
@@ -760,21 +760,21 @@ export default function StorePanel() {
 
   const updateWallet = async (type: "credit" | "debit") => {
     if (!adminCode) {
-      toast.error("رمز الإدارة مطلوب");
+      toast.error("ر�.ز ا�"إدارة �.ط�"�^ب");
       return;
     }
     if (!walletDriverId.trim()) {
-      toast.error("معرّف السائق مطلوب");
+      toast.error("�.عر�'ف ا�"سائ�, �.ط�"�^ب");
       return;
     }
     const amountValue = Number(walletAmount);
     if (!Number.isFinite(amountValue) || amountValue <= 0) {
-      toast.error("أدخل مبلغاً صحيحاً");
+      toast.error("أدخ�" �.ب�"غا�< صح�Sحا�<");
       return;
     }
 
     const toastId = toast.loading(
-      type === "credit" ? "جاري شحن المحفظة..." : "جاري سحب المبلغ..."
+      type === "credit" ? "جار�S شح�? ا�"�.حفظة..." : "جار�S سحب ا�"�.ب�"غ..."
     );
 
     try {
@@ -795,33 +795,33 @@ export default function StorePanel() {
       );
       const data = (await res.json()) as ApiResponse;
       if (data?.ok) {
-        toast.success("تم تحديث المحفظة", { id: toastId });
+        toast.success("ت�. تحد�Sث ا�"�.حفظة", { id: toastId });
         setWalletAmount("");
         setWalletNote("");
         fetchLedger(ledgerPeriod);
       } else {
-        toast.error(data?.error ?? "فشل تحديث المحفظة", { id: toastId });
+        toast.error(data?.error ?? "فش�" تحد�Sث ا�"�.حفظة", { id: toastId });
       }
     } catch {
-      toast.error("خطأ في الشبكة", { id: toastId });
+      toast.error("خطأ ف�S ا�"شب�fة", { id: toastId });
     }
   };
 
   const setDriverActive = async (driverId: string, nextActive: boolean) => {
     if (!adminCode) {
-      toast.error("رمز الإدارة مطلوب");
+      toast.error("ر�.ز ا�"إدارة �.ط�"�^ب");
       return;
     }
     if (!driverId) return;
     const confirmed = window.confirm(
       nextActive
-        ? "سيتم تفعيل السائق للعودة للعمل. هل تريد المتابعة؟"
-        : "سيتم تعطيل السائق وإيقاف ظهوره في القائمة النشطة. هل تريد المتابعة؟"
+        ? "س�Sت�. تفع�S�" ا�"سائ�, �"�"ع�^دة �"�"ع�.�". �?�" تر�Sد ا�"�.تابعة�Y"
+        : "س�Sت�. تعط�S�" ا�"سائ�, �^إ�S�,اف ظ�?�^ر�? ف�S ا�"�,ائ�.ة ا�"�?شطة. �?�" تر�Sد ا�"�.تابعة�Y"
     );
     if (!confirmed) return;
 
     const toastId = toast.loading(
-      nextActive ? "جاري تفعيل السائق..." : "جاري تعطيل السائق..."
+      nextActive ? "جار�S تفع�S�" ا�"سائ�,..." : "جار�S تعط�S�" ا�"سائ�,..."
     );
     try {
       const res = await fetch(
@@ -834,25 +834,25 @@ export default function StorePanel() {
       );
       const data = (await res.json()) as ApiResponse;
       if (data?.ok) {
-        toast.success(nextActive ? "تم تفعيل السائق" : "تم تعطيل السائق", {
+        toast.success(nextActive ? "ت�. تفع�S�" ا�"سائ�," : "ت�. تعط�S�" ا�"سائ�,", {
           id: toastId,
         });
         fetchDrivers();
       } else {
-        toast.error(data?.error ?? "فشل تحديث السائق", { id: toastId });
+        toast.error(data?.error ?? "فش�" تحد�Sث ا�"سائ�,", { id: toastId });
       }
     } catch {
-      toast.error("خطأ في الشبكة", { id: toastId });
+      toast.error("خطأ ف�S ا�"شب�fة", { id: toastId });
     }
   };
 
   const createOrder = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!adminCode) {
-      toast.error("رمز الإدارة مطلوب");
+      toast.error("ر�.ز ا�"إدارة �.ط�"�^ب");
       return;
     }
-    const toastId = toast.loading("جاري إنشاء الطلب...");
+    const toastId = toast.loading("جار�S إ�?شاء ا�"ط�"ب...");
 
     const formData = new FormData(e.currentTarget);
     const payload: Record<string, unknown> = {
@@ -878,12 +878,12 @@ export default function StorePanel() {
       const data = (await res.json()) as ApiResponse;
       if (data?.order?.id) {
         e.currentTarget.reset();
-        toast.success("تم إنشاء الطلب", { id: toastId });
+        toast.success("ت�. إ�?شاء ا�"ط�"ب", { id: toastId });
       } else {
-        toast.error(data?.error ?? "فشل إنشاء الطلب", { id: toastId });
+        toast.error(data?.error ?? "فش�" إ�?شاء ا�"ط�"ب", { id: toastId });
       }
     } catch {
-      toast.error("خطأ في الشبكة", { id: toastId });
+      toast.error("خطأ ف�S ا�"شب�fة", { id: toastId });
     }
   };
 
@@ -900,9 +900,9 @@ export default function StorePanel() {
   }, [activeSection, ledgerPeriod]);
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900">
+    <div dir="rtl" className="min-h-screen bg-slate-50 text-slate-900">
       <Toaster position="top-right" />
-      <div className="mx-auto max-w-6xl px-6 py-10">
+      <div className="mx-auto max-w-[1400px] px-6 py-10">
         <header className="flex flex-col gap-6 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm md:flex-row md:items-center md:justify-between">
           <div className="flex items-center gap-4">
             <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-white">
@@ -910,27 +910,27 @@ export default function StorePanel() {
             </div>
             <div>
               <p className="text-xs tracking-[0.25em] text-slate-500">
-                لوحة التحكم اللوجستية
+                �"�^حة ا�"تح�f�. ا�"�"�^جست�Sة
               </p>
               <h1 className="text-3xl font-semibold tracking-tight">
-                نوفا ماكس
+                �?�^فا �.ا�fس
               </h1>
             </div>
           </div>
           <div className="grid grid-cols-2 gap-3 text-xs md:flex md:items-center">
             <div className="rounded-full border border-slate-200 bg-white px-4 py-2">
-              الإجمالي <span className="ml-2 font-semibold">{stats.total}</span>
+              ا�"إج�.ا�"�S <span className="ml-2 font-semibold">{stats.total}</span>
             </div>
             <div className="rounded-full border border-slate-200 bg-white px-4 py-2">
-              قيد الانتظار{" "}
+              �,�Sد ا�"ا�?تظار{" "}
               <span className="ml-2 font-semibold">{stats.pending}</span>
             </div>
             <div className="rounded-full border border-slate-200 bg-white px-4 py-2">
-              قيد التوصيل{" "}
+              �,�Sد ا�"ت�^ص�S�"{" "}
               <span className="ml-2 font-semibold">{stats.delivering}</span>
             </div>
             <div className="rounded-full border border-slate-200 bg-white px-4 py-2">
-              تم التسليم{" "}
+              ت�. ا�"تس�"�S�.{" "}
               <span className="ml-2 font-semibold">{stats.delivered}</span>
             </div>
           </div>
@@ -1569,7 +1569,7 @@ export default function StorePanel() {
 
       <aside className="order-1 lg:order-2">
         <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm lg:sticky lg:top-6">
-          <p className="text-xs tracking-[0.25em] text-slate-500">الأقسام</p>
+          <p className="text-xs tracking-[0.25em] text-slate-500">ا�"أ�,سا�.</p>
           <div className="mt-4 grid gap-2">
             {sectionNav.map((item) => (
               <button
@@ -1590,7 +1590,7 @@ export default function StorePanel() {
             onClick={clearStore}
             className="mt-6 flex w-full items-center justify-between rounded-lg border border-slate-200 bg-slate-100 px-4 py-3 text-sm font-semibold text-slate-800"
           >
-            تسجيل الخروج
+            تسج�S�" ا�"خر�^ج
             <LogOut className="h-4 w-4" />
           </button>
         </div>
@@ -1600,6 +1600,7 @@ export default function StorePanel() {
   </div>
   );
 }
+
 
 
 
