@@ -1048,6 +1048,7 @@ export default function StorePanel() {
       </aside>
     </div>
   </div>
+  </div>
   );
 }
 
