@@ -70,15 +70,15 @@ type ApiResponse = Record<string, any>;
 type SectionKey = "dashboard" | "drivers" | "finance" | "inventory" | "settings";
 
 const sectionNav: Array<{ key: SectionKey; label: string; icon: typeof LayoutDashboard }> = [
-  { key: "dashboard", label: "�"�^حة ا�"تح�f�.", icon: LayoutDashboard },
-  { key: "drivers", label: "إدارة ا�"سائ�,�S�?", icon: Users },
-  { key: "finance", label: "ا�"ع�.�"�Sات ا�"�.ا�"�Sة", icon: Wallet },
-  { key: "inventory", label: "ا�"جرد", icon: ClipboardList },
-  { key: "settings", label: "ا�"إعدادات", icon: Settings },
+  { key: "dashboard", label: "Ù„ÙˆØ­Ø© Ø§Ù„ØªØ­ÙƒÙ…", icon: LayoutDashboard },
+  { key: "drivers", label: "Ø¥Ø¯Ø§Ø±Ø© Ø§Ù„Ø³Ø§Ø¦Ù‚ÙŠÙ†", icon: Users },
+  { key: "finance", label: "Ø§Ù„Ø¹Ù…Ù„ÙŠØ§Øª Ø§Ù„Ù…Ø§Ù„ÙŠØ©", icon: Wallet },
+  { key: "inventory", label: "Ø§Ù„Ø¬Ø±Ø¯", icon: ClipboardList },
+  { key: "settings", label: "Ø§Ù„Ø¥Ø¹Ø¯Ø§Ø¯Ø§Øª", icon: Settings },
 ];
 
 const navButtonBase =
-  "rounded-lg border px-3 py-2 text-sm font-semibold transition flex items-center justify-between";
+  "rounded-lg border px-3 py-2 text-sm font-semibold transition flex items-center justify-between w-full";
 const navButtonActive = "border-slate-900 bg-slate-900 text-white";
 const navButtonInactive =
   "border-slate-200 bg-white text-slate-700 hover:border-slate-400";
@@ -92,11 +92,11 @@ const statusStyles: Record<string, string> = {
 };
 
 const statusLabels: Record<string, string> = {
-  pending: "�,�Sد ا�"ا�?تظار",
-  accepted: "ت�. ا�"�,ب�^�"",
-  delivering: "�,�Sد ا�"ت�^ص�S�"",
-  delivered: "ت�. ا�"تس�"�S�.",
-  cancelled: "�.�"غ�S",
+  pending: "Ù‚ÙŠØ¯ Ø§Ù„Ø§Ù†ØªØ¸Ø§Ø±",
+  accepted: "ØªÙ… Ø§Ù„Ù‚Ø¨ÙˆÙ„",
+  delivering: "Ù‚ÙŠØ¯ Ø§Ù„ØªÙˆØµÙŠÙ„",
+  delivered: "ØªÙ… Ø§Ù„ØªØ³Ù„ÙŠÙ…",
+  cancelled: "Ù…Ù„ØºÙŠ",
 };
 
 function formatStatus(value: string | null | undefined): string {
@@ -105,10 +105,10 @@ function formatStatus(value: string | null | undefined): string {
 }
 
 const payoutLabels: Record<string, string> = {
-  card: "بطا�,ة �.صرف�Sة",
-  wallet: "�.حفظة �.ح�"�Sة",
-  cash: "�?�,دا�<",
-  bank_transfer: "ح�^ا�"ة �.صرف�Sة",
+  card: "Ø¨Ø·Ø§Ù‚Ø© Ù…ØµØ±ÙÙŠØ©",
+  wallet: "Ù…Ø­ÙØ¸Ø© Ù…Ø­Ù„ÙŠØ©",
+  cash: "Ù†Ù‚Ø¯Ø§Ù‹",
+  bank_transfer: "Ø­ÙˆØ§Ù„Ø© Ù…ØµØ±ÙÙŠØ©",
 };
 
 function formatPayout(value: string | null | undefined): string {
@@ -249,7 +249,7 @@ export default function StorePanel() {
       });
       return true;
     } catch {
-      toast.error("فش�" ا�"تح�,�, با�"بص�.ة.");
+      toast.error("ÙØ´Ù„ Ø§Ù„ØªØ­Ù‚Ù‚ Ø¨Ø§Ù„Ø¨ØµÙ…Ø©.");
       return false;
     }
   };
@@ -286,7 +286,7 @@ export default function StorePanel() {
         return true;
       }
     } catch {
-      toast.error("تعذر تفع�S�" ا�"بص�.ة.");
+      toast.error("ØªØ¹Ø°Ø± ØªÙØ¹ÙŠÙ„ Ø§Ù„Ø¨ØµÙ…Ø©.");
     }
     return false;
   };
@@ -315,7 +315,7 @@ export default function StorePanel() {
 
   const resolveStore = async (silent = true) => {
     if (!adminCode) return;
-    const toastId = silent ? null : toast.loading("جار�S ربط ا�"�.تجر...");
+    const toastId = silent ? null : toast.loading("Ø¬Ø§Ø±ÙŠ Ø±Ø¨Ø· Ø§Ù„Ù…ØªØ¬Ø±...");
     try {
       const res = await fetch(`${API_BASE}/stores/by-admin`, {
         method: "POST",
@@ -326,12 +326,12 @@ export default function StorePanel() {
       if (data?.store?.id) {
         setStoreId(data.store.id);
         setStoreLabel(data.store.name ?? null);
-        if (toastId) toast.success("ت�. ربط ا�"�.تجر", { id: toastId });
+        if (toastId) toast.success("ØªÙ… Ø±Ø¨Ø· Ø§Ù„Ù…ØªØ¬Ø±", { id: toastId });
       } else if (toastId) {
-        toast.error(data?.error ?? "تعذر ربط ا�"�.تجر", { id: toastId });
+        toast.error(data?.error ?? "ØªØ¹Ø°Ø± Ø±Ø¨Ø· Ø§Ù„Ù…ØªØ¬Ø±", { id: toastId });
       }
     } catch {
-      if (toastId) toast.error("خطأ ف�S ا�"شب�fة", { id: toastId });
+      if (toastId) toast.error("Ø®Ø·Ø£ ÙÙŠ Ø§Ù„Ø´Ø¨ÙƒØ©", { id: toastId });
     }
   };
 
@@ -371,7 +371,7 @@ export default function StorePanel() {
       for (const order of nextOrders) {
         const previous = prevMap.get(order.id);
         if (!previous) {
-          toast.success(`ط�"ب جد�Sد ${order.id.slice(0, 6)}...`);
+          toast.success(`Ø·Ù„Ø¨ Ø¬Ø¯ÙŠØ¯ ${order.id.slice(0, 6)}...`);
           flashOrder(order.id);
         } else if (previous.status !== order.status) {
           toast.custom(
@@ -384,7 +384,7 @@ export default function StorePanel() {
                 <div className="flex items-center gap-2 text-slate-900">
                   <PackagePlus className="h-4 w-4 text-slate-600" />
                   <span>
-                    حا�"ة ا�"ط�"ب {order.id.slice(0, 6)}... أصبحت{" "}
+                    Ø­Ø§Ù„Ø© Ø§Ù„Ø·Ù„Ø¨ {order.id.slice(0, 6)}... Ø£ØµØ¨Ø­Øª{" "}
                     {formatStatus(order.status)}
                   </span>
                 </div>
@@ -414,7 +414,7 @@ export default function StorePanel() {
         if (!hasLoadedRef.current) hasLoadedRef.current = true;
       }
     } catch {
-      if (showToasts) toast.error("تعذر تح�.�S�" ا�"ط�"بات");
+      if (showToasts) toast.error("ØªØ¹Ø°Ø± ØªØ­Ù…ÙŠÙ„ Ø§Ù„Ø·Ù„Ø¨Ø§Øª");
     }
   };
 
@@ -439,7 +439,7 @@ export default function StorePanel() {
           if (!hasLoadedRef.current) hasLoadedRef.current = true;
         }
       } catch {
-        if (showToasts) toast.error("تعذر تح�.�S�" ا�"ط�"بات");
+        if (showToasts) toast.error("ØªØ¹Ø°Ø± ØªØ­Ù…ÙŠÙ„ Ø§Ù„Ø·Ù„Ø¨Ø§Øª");
       }
     };
 
@@ -496,11 +496,11 @@ export default function StorePanel() {
             )
           );
         }
-        toast("ت�. تحد�Sث حا�"ة ا�"سائ�,");
+        toast("ØªÙ… ØªØ­Ø¯ÙŠØ« Ø­Ø§Ù„Ø© Ø§Ù„Ø³Ø§Ø¦Ù‚");
         return;
       }
       if (type === "driver_created") {
-        toast.success("ت�. إ�?شاء سائ�, جد�Sد");
+        toast.success("ØªÙ… Ø¥Ù†Ø´Ø§Ø¡ Ø³Ø§Ø¦Ù‚ Ø¬Ø¯ÙŠØ¯");
         fetchDrivers();
         return;
       }
@@ -514,7 +514,7 @@ export default function StorePanel() {
             )
           );
         }
-        toast("ت�. تعط�S�" سائ�,");
+        toast("ØªÙ… ØªØ¹Ø·ÙŠÙ„ Ø³Ø§Ø¦Ù‚");
         return;
       }
       if (type === "driver_active") {
@@ -527,11 +527,11 @@ export default function StorePanel() {
             )
           );
         }
-        toast("ت�. تفع�S�" سائ�,");
+        toast("ØªÙ… ØªÙØ¹ÙŠÙ„ Ø³Ø§Ø¦Ù‚");
         return;
       }
       if (type === "wallet_transaction") {
-        toast("ت�. تحد�Sث �.حفظة ا�"سائ�,");
+        toast("ØªÙ… ØªØ­Ø¯ÙŠØ« Ù…Ø­ÙØ¸Ø© Ø§Ù„Ø³Ø§Ø¦Ù‚");
         if (activeSection === "finance") {
           fetchLedger(ledgerPeriod);
         }
@@ -637,10 +637,10 @@ export default function StorePanel() {
   const createStore = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!storeName.trim()) {
-      toast.error("اس�. ا�"�.تجر �.ط�"�^ب");
+      toast.error("Ø§Ø³Ù… Ø§Ù„Ù…ØªØ¬Ø± Ù…Ø·Ù„ÙˆØ¨");
       return;
     }
-    const toastId = toast.loading("جار�S إ�?شاء ا�"�.تجر...");
+    const toastId = toast.loading("Ø¬Ø§Ø±ÙŠ Ø¥Ù†Ø´Ø§Ø¡ Ø§Ù„Ù…ØªØ¬Ø±...");
     try {
       const res = await fetch(`${API_BASE}/stores`, {
         method: "POST",
@@ -652,26 +652,26 @@ export default function StorePanel() {
         setStoreId(data.store.id);
         setAdminCode(data.store.admin_code ?? "");
         setStoreLabel(data.store.name ?? null);
-        toast.success("ت�. إ�?شاء ا�"�.تجر", { id: toastId });
+        toast.success("ØªÙ… Ø¥Ù†Ø´Ø§Ø¡ Ø§Ù„Ù…ØªØ¬Ø±", { id: toastId });
       } else {
-        toast.error(data?.error ?? "فش�" إ�?شاء ا�"�.تجر", { id: toastId });
+        toast.error(data?.error ?? "ÙØ´Ù„ Ø¥Ù†Ø´Ø§Ø¡ Ø§Ù„Ù…ØªØ¬Ø±", { id: toastId });
       }
     } catch {
-      toast.error("خطأ ف�S ا�"شب�fة", { id: toastId });
+      toast.error("Ø®Ø·Ø£ ÙÙŠ Ø§Ù„Ø´Ø¨ÙƒØ©", { id: toastId });
     }
   };
 
   const createDriver = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!adminCode) {
-      toast.error("ر�.ز ا�"إدارة �.ط�"�^ب");
+      toast.error("Ø±Ù…Ø² Ø§Ù„Ø¥Ø¯Ø§Ø±Ø© Ù…Ø·Ù„ÙˆØ¨");
       return;
     }
     if (!driverName.trim() || !driverPhone.trim() || !driverEmail.trim()) {
-      toast.error("اس�. ا�"سائ�, �^ر�,�. ا�"�?اتف �.ط�"�^با�?");
+      toast.error("Ø§Ø³Ù… Ø§Ù„Ø³Ø§Ø¦Ù‚ ÙˆØ±Ù‚Ù… Ø§Ù„Ù‡Ø§ØªÙ Ù…Ø·Ù„ÙˆØ¨Ø§Ù†");
       return;
     }
-    const toastId = toast.loading("جار�S إ�?شاء ا�"سائ�,...");
+    const toastId = toast.loading("Ø¬Ø§Ø±ÙŠ Ø¥Ù†Ø´Ø§Ø¡ Ø§Ù„Ø³Ø§Ø¦Ù‚...");
 
     try {
       const payload: Record<string, unknown> = {
@@ -694,14 +694,14 @@ export default function StorePanel() {
         setDriverName("");
         setDriverPhone("");
         setDriverEmail("");
-        toast.success("ت�. إ�?شاء ا�"سائ�,", { id: toastId });
-        toast("ت�. تج�?�Sز ص�?د�^�, �?سخ ا�"�f�^د", { icon: "�o�" });
+        toast.success("ØªÙ… Ø¥Ù†Ø´Ø§Ø¡ Ø§Ù„Ø³Ø§Ø¦Ù‚", { id: toastId });
+        toast("ØªÙ… ØªØ¬Ù‡ÙŠØ² ØµÙ†Ø¯ÙˆÙ‚ Ù†Ø³Ø® Ø§Ù„ÙƒÙˆØ¯", { icon: "âœ¨" });
         fetchDrivers();
       } else {
-        toast.error(data?.error ?? "فش�" إ�?شاء ا�"سائ�,", { id: toastId });
+        toast.error(data?.error ?? "ÙØ´Ù„ Ø¥Ù†Ø´Ø§Ø¡ Ø§Ù„Ø³Ø§Ø¦Ù‚", { id: toastId });
       }
     } catch {
-      toast.error("خطأ ف�S ا�"شب�fة", { id: toastId });
+      toast.error("Ø®Ø·Ø£ ÙÙŠ Ø§Ù„Ø´Ø¨ÙƒØ©", { id: toastId });
     }
   };
 
@@ -709,9 +709,9 @@ export default function StorePanel() {
     if (!driverCode) return;
     try {
       await navigator.clipboard.writeText(driverCode);
-      toast.success("ت�. �?سخ ا�"�f�^د");
+      toast.success("ØªÙ… Ù†Ø³Ø® Ø§Ù„ÙƒÙˆØ¯");
     } catch {
-      toast.error("تعذر ا�"�?سخ");
+      toast.error("ØªØ¹Ø°Ø± Ø§Ù„Ù†Ø³Ø®");
     }
   };
 
@@ -760,21 +760,21 @@ export default function StorePanel() {
 
   const updateWallet = async (type: "credit" | "debit") => {
     if (!adminCode) {
-      toast.error("ر�.ز ا�"إدارة �.ط�"�^ب");
+      toast.error("Ø±Ù…Ø² Ø§Ù„Ø¥Ø¯Ø§Ø±Ø© Ù…Ø·Ù„ÙˆØ¨");
       return;
     }
     if (!walletDriverId.trim()) {
-      toast.error("�.عر�'ف ا�"سائ�, �.ط�"�^ب");
+      toast.error("Ù…Ø¹Ø±Ù‘Ù Ø§Ù„Ø³Ø§Ø¦Ù‚ Ù…Ø·Ù„ÙˆØ¨");
       return;
     }
     const amountValue = Number(walletAmount);
     if (!Number.isFinite(amountValue) || amountValue <= 0) {
-      toast.error("أدخ�" �.ب�"غا�< صح�Sحا�<");
+      toast.error("Ø£Ø¯Ø®Ù„ Ù…Ø¨Ù„ØºØ§Ù‹ ØµØ­ÙŠØ­Ø§Ù‹");
       return;
     }
 
     const toastId = toast.loading(
-      type === "credit" ? "جار�S شح�? ا�"�.حفظة..." : "جار�S سحب ا�"�.ب�"غ..."
+      type === "credit" ? "Ø¬Ø§Ø±ÙŠ Ø´Ø­Ù† Ø§Ù„Ù…Ø­ÙØ¸Ø©..." : "Ø¬Ø§Ø±ÙŠ Ø³Ø­Ø¨ Ø§Ù„Ù…Ø¨Ù„Øº..."
     );
 
     try {
@@ -795,33 +795,33 @@ export default function StorePanel() {
       );
       const data = (await res.json()) as ApiResponse;
       if (data?.ok) {
-        toast.success("ت�. تحد�Sث ا�"�.حفظة", { id: toastId });
+        toast.success("ØªÙ… ØªØ­Ø¯ÙŠØ« Ø§Ù„Ù…Ø­ÙØ¸Ø©", { id: toastId });
         setWalletAmount("");
         setWalletNote("");
         fetchLedger(ledgerPeriod);
       } else {
-        toast.error(data?.error ?? "فش�" تحد�Sث ا�"�.حفظة", { id: toastId });
+        toast.error(data?.error ?? "ÙØ´Ù„ ØªØ­Ø¯ÙŠØ« Ø§Ù„Ù…Ø­ÙØ¸Ø©", { id: toastId });
       }
     } catch {
-      toast.error("خطأ ف�S ا�"شب�fة", { id: toastId });
+      toast.error("Ø®Ø·Ø£ ÙÙŠ Ø§Ù„Ø´Ø¨ÙƒØ©", { id: toastId });
     }
   };
 
   const setDriverActive = async (driverId: string, nextActive: boolean) => {
     if (!adminCode) {
-      toast.error("ر�.ز ا�"إدارة �.ط�"�^ب");
+      toast.error("Ø±Ù…Ø² Ø§Ù„Ø¥Ø¯Ø§Ø±Ø© Ù…Ø·Ù„ÙˆØ¨");
       return;
     }
     if (!driverId) return;
     const confirmed = window.confirm(
       nextActive
-        ? "س�Sت�. تفع�S�" ا�"سائ�, �"�"ع�^دة �"�"ع�.�". �?�" تر�Sد ا�"�.تابعة�Y"
-        : "س�Sت�. تعط�S�" ا�"سائ�, �^إ�S�,اف ظ�?�^ر�? ف�S ا�"�,ائ�.ة ا�"�?شطة. �?�" تر�Sد ا�"�.تابعة�Y"
+        ? "Ø³ÙŠØªÙ… ØªÙØ¹ÙŠÙ„ Ø§Ù„Ø³Ø§Ø¦Ù‚ Ù„Ù„Ø¹ÙˆØ¯Ø© Ù„Ù„Ø¹Ù…Ù„. Ù‡Ù„ ØªØ±ÙŠØ¯ Ø§Ù„Ù…ØªØ§Ø¨Ø¹Ø©ØŸ"
+        : "Ø³ÙŠØªÙ… ØªØ¹Ø·ÙŠÙ„ Ø§Ù„Ø³Ø§Ø¦Ù‚ ÙˆØ¥ÙŠÙ‚Ø§Ù Ø¸Ù‡ÙˆØ±Ù‡ ÙÙŠ Ø§Ù„Ù‚Ø§Ø¦Ù…Ø© Ø§Ù„Ù†Ø´Ø·Ø©. Ù‡Ù„ ØªØ±ÙŠØ¯ Ø§Ù„Ù…ØªØ§Ø¨Ø¹Ø©ØŸ"
     );
     if (!confirmed) return;
 
     const toastId = toast.loading(
-      nextActive ? "جار�S تفع�S�" ا�"سائ�,..." : "جار�S تعط�S�" ا�"سائ�,..."
+      nextActive ? "Ø¬Ø§Ø±ÙŠ ØªÙØ¹ÙŠÙ„ Ø§Ù„Ø³Ø§Ø¦Ù‚..." : "Ø¬Ø§Ø±ÙŠ ØªØ¹Ø·ÙŠÙ„ Ø§Ù„Ø³Ø§Ø¦Ù‚..."
     );
     try {
       const res = await fetch(
@@ -834,25 +834,25 @@ export default function StorePanel() {
       );
       const data = (await res.json()) as ApiResponse;
       if (data?.ok) {
-        toast.success(nextActive ? "ت�. تفع�S�" ا�"سائ�," : "ت�. تعط�S�" ا�"سائ�,", {
+        toast.success(nextActive ? "ØªÙ… ØªÙØ¹ÙŠÙ„ Ø§Ù„Ø³Ø§Ø¦Ù‚" : "ØªÙ… ØªØ¹Ø·ÙŠÙ„ Ø§Ù„Ø³Ø§Ø¦Ù‚", {
           id: toastId,
         });
         fetchDrivers();
       } else {
-        toast.error(data?.error ?? "فش�" تحد�Sث ا�"سائ�,", { id: toastId });
+        toast.error(data?.error ?? "ÙØ´Ù„ ØªØ­Ø¯ÙŠØ« Ø§Ù„Ø³Ø§Ø¦Ù‚", { id: toastId });
       }
     } catch {
-      toast.error("خطأ ف�S ا�"شب�fة", { id: toastId });
+      toast.error("Ø®Ø·Ø£ ÙÙŠ Ø§Ù„Ø´Ø¨ÙƒØ©", { id: toastId });
     }
   };
 
   const createOrder = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!adminCode) {
-      toast.error("ر�.ز ا�"إدارة �.ط�"�^ب");
+      toast.error("Ø±Ù…Ø² Ø§Ù„Ø¥Ø¯Ø§Ø±Ø© Ù…Ø·Ù„ÙˆØ¨");
       return;
     }
-    const toastId = toast.loading("جار�S إ�?شاء ا�"ط�"ب...");
+    const toastId = toast.loading("Ø¬Ø§Ø±ÙŠ Ø¥Ù†Ø´Ø§Ø¡ Ø§Ù„Ø·Ù„Ø¨...");
 
     const formData = new FormData(e.currentTarget);
     const payload: Record<string, unknown> = {
@@ -878,12 +878,12 @@ export default function StorePanel() {
       const data = (await res.json()) as ApiResponse;
       if (data?.order?.id) {
         e.currentTarget.reset();
-        toast.success("ت�. إ�?شاء ا�"ط�"ب", { id: toastId });
+        toast.success("ØªÙ… Ø¥Ù†Ø´Ø§Ø¡ Ø§Ù„Ø·Ù„Ø¨", { id: toastId });
       } else {
-        toast.error(data?.error ?? "فش�" إ�?شاء ا�"ط�"ب", { id: toastId });
+        toast.error(data?.error ?? "ÙØ´Ù„ Ø¥Ù†Ø´Ø§Ø¡ Ø§Ù„Ø·Ù„Ø¨", { id: toastId });
       }
     } catch {
-      toast.error("خطأ ف�S ا�"شب�fة", { id: toastId });
+      toast.error("Ø®Ø·Ø£ ÙÙŠ Ø§Ù„Ø´Ø¨ÙƒØ©", { id: toastId });
     }
   };
 
@@ -902,35 +902,35 @@ export default function StorePanel() {
   return (
     <div dir="rtl" className="min-h-screen bg-slate-50 text-slate-900">
       <Toaster position="top-right" />
-      <div className="mx-auto max-w-[1400px] px-6 py-10">
+      <div className="w-full px-6 py-10">
         <header className="flex flex-col gap-6 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm md:flex-row md:items-center md:justify-between">
           <div className="flex items-center gap-4">
             <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-white">
-              <Image src="/logo.png" alt="NOVA MAX" width={48} height={48} />
+              <Image src="/logo.webp" alt="NOVA MAX" width={48} height={48} />
             </div>
             <div>
               <p className="text-xs tracking-[0.25em] text-slate-500">
-                �"�^حة ا�"تح�f�. ا�"�"�^جست�Sة
+                Ù„ÙˆØ­Ø© Ø§Ù„ØªØ­ÙƒÙ… Ø§Ù„Ù„ÙˆØ¬Ø³ØªÙŠØ©
               </p>
               <h1 className="text-3xl font-semibold tracking-tight">
-                �?�^فا �.ا�fس
+                Ù†ÙˆÙØ§ Ù…Ø§ÙƒØ³
               </h1>
             </div>
           </div>
           <div className="grid grid-cols-2 gap-3 text-xs md:flex md:items-center">
             <div className="rounded-full border border-slate-200 bg-white px-4 py-2">
-              ا�"إج�.ا�"�S <span className="ml-2 font-semibold">{stats.total}</span>
+              Ø§Ù„Ø¥Ø¬Ù…Ø§Ù„ÙŠ <span className="ml-2 font-semibold">{stats.total}</span>
             </div>
             <div className="rounded-full border border-slate-200 bg-white px-4 py-2">
-              �,�Sد ا�"ا�?تظار{" "}
+              Ù‚ÙŠØ¯ Ø§Ù„Ø§Ù†ØªØ¸Ø§Ø±{" "}
               <span className="ml-2 font-semibold">{stats.pending}</span>
             </div>
             <div className="rounded-full border border-slate-200 bg-white px-4 py-2">
-              �,�Sد ا�"ت�^ص�S�"{" "}
+              Ù‚ÙŠØ¯ Ø§Ù„ØªÙˆØµÙŠÙ„{" "}
               <span className="ml-2 font-semibold">{stats.delivering}</span>
             </div>
             <div className="rounded-full border border-slate-200 bg-white px-4 py-2">
-              ت�. ا�"تس�"�S�.{" "}
+              ØªÙ… Ø§Ù„ØªØ³Ù„ÙŠÙ…{" "}
               <span className="ml-2 font-semibold">{stats.delivered}</span>
             </div>
           </div>
@@ -1569,7 +1569,7 @@ export default function StorePanel() {
 
       <aside className="order-1 lg:order-2">
         <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm lg:sticky lg:top-6">
-          <p className="text-xs tracking-[0.25em] text-slate-500">ا�"أ�,سا�.</p>
+          <p className="text-xs tracking-[0.25em] text-slate-500">Ø§Ù„Ø£Ù‚Ø³Ø§Ù…</p>
           <div className="mt-4 grid gap-2">
             {sectionNav.map((item) => (
               <button
@@ -1590,7 +1590,7 @@ export default function StorePanel() {
             onClick={clearStore}
             className="mt-6 flex w-full items-center justify-between rounded-lg border border-slate-200 bg-slate-100 px-4 py-3 text-sm font-semibold text-slate-800"
           >
-            تسج�S�" ا�"خر�^ج
+            ØªØ³Ø¬ÙŠÙ„ Ø§Ù„Ø®Ø±ÙˆØ¬
             <LogOut className="h-4 w-4" />
           </button>
         </div>
