@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import Image from "next/image";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -39,7 +39,6 @@ type DriverRow = {
   id: string;
   name: string | null;
   phone: string | null;
-  email: string | null;
   status: string | null;
   wallet_balance: number | null;
   is_active: number | null;
@@ -70,11 +69,11 @@ type ApiResponse = Record<string, any>;
 type SectionKey = "dashboard" | "drivers" | "finance" | "inventory" | "settings";
 
 const sectionNav: Array<{ key: SectionKey; label: string; icon: typeof LayoutDashboard }> = [
-  { key: "dashboard", label: "Ù„ÙˆØ­Ø© Ø§Ù„ØªØ­ÙƒÙ…", icon: LayoutDashboard },
-  { key: "drivers", label: "Ø¥Ø¯Ø§Ø±Ø© Ø§Ù„Ø³Ø§Ø¦Ù‚ÙŠÙ†", icon: Users },
-  { key: "finance", label: "Ø§Ù„Ø¹Ù…Ù„ÙŠØ§Øª Ø§Ù„Ù…Ø§Ù„ÙŠØ©", icon: Wallet },
-  { key: "inventory", label: "Ø§Ù„Ø¬Ø±Ø¯", icon: ClipboardList },
-  { key: "settings", label: "Ø§Ù„Ø¥Ø¹Ø¯Ø§Ø¯Ø§Øª", icon: Settings },
+  { key: "dashboard", label: "لوحة التحكم", icon: LayoutDashboard },
+  { key: "drivers", label: "إدارة السائقين", icon: Users },
+  { key: "finance", label: "العمليات المالية", icon: Wallet },
+  { key: "inventory", label: "الجرد", icon: ClipboardList },
+  { key: "settings", label: "الإعدادات", icon: Settings },
 ];
 
 const navButtonBase =
@@ -92,11 +91,11 @@ const statusStyles: Record<string, string> = {
 };
 
 const statusLabels: Record<string, string> = {
-  pending: "Ù‚ÙŠØ¯ Ø§Ù„Ø§Ù†ØªØ¸Ø§Ø±",
-  accepted: "ØªÙ… Ø§Ù„Ù‚Ø¨ÙˆÙ„",
-  delivering: "Ù‚ÙŠØ¯ Ø§Ù„ØªÙˆØµÙŠÙ„",
-  delivered: "ØªÙ… Ø§Ù„ØªØ³Ù„ÙŠÙ…",
-  cancelled: "Ù…Ù„ØºÙŠ",
+  pending: "قيد الانتظار",
+  accepted: "تم القبول",
+  delivering: "قيد التوصيل",
+  delivered: "تم التسليم",
+  cancelled: "ملغي",
 };
 
 function formatStatus(value: string | null | undefined): string {
@@ -105,10 +104,10 @@ function formatStatus(value: string | null | undefined): string {
 }
 
 const payoutLabels: Record<string, string> = {
-  card: "Ø¨Ø·Ø§Ù‚Ø© Ù…ØµØ±ÙÙŠØ©",
-  wallet: "Ù…Ø­ÙØ¸Ø© Ù…Ø­Ù„ÙŠØ©",
-  cash: "Ù†Ù‚Ø¯Ø§Ù‹",
-  bank_transfer: "Ø­ÙˆØ§Ù„Ø© Ù…ØµØ±ÙÙŠØ©",
+  card: "بطاقة مصرفية",
+  wallet: "محفظة محلية",
+  cash: "نقداً",
+  bank_transfer: "حوالة مصرفية",
 };
 
 function formatPayout(value: string | null | undefined): string {
@@ -160,7 +159,6 @@ export default function StorePanel() {
   const [storeLabel, setStoreLabel] = useState<string | null>(null);
   const [driverName, setDriverName] = useState("");
   const [driverPhone, setDriverPhone] = useState("");
-  const [driverEmail, setDriverEmail] = useState("");
   const [driverCode, setDriverCode] = useState<string | null>(null);
   const [walletDriverId, setWalletDriverId] = useState("");
   const [walletAmount, setWalletAmount] = useState("");
@@ -249,7 +247,7 @@ export default function StorePanel() {
       });
       return true;
     } catch {
-      toast.error("ÙØ´Ù„ Ø§Ù„ØªØ­Ù‚Ù‚ Ø¨Ø§Ù„Ø¨ØµÙ…Ø©.");
+      toast.error("فشل التحقق بالبصمة.");
       return false;
     }
   };
@@ -286,7 +284,7 @@ export default function StorePanel() {
         return true;
       }
     } catch {
-      toast.error("ØªØ¹Ø°Ø± ØªÙØ¹ÙŠÙ„ Ø§Ù„Ø¨ØµÙ…Ø©.");
+      toast.error("تعذر تفعيل البصمة.");
     }
     return false;
   };
@@ -315,7 +313,7 @@ export default function StorePanel() {
 
   const resolveStore = async (silent = true) => {
     if (!adminCode) return;
-    const toastId = silent ? null : toast.loading("Ø¬Ø§Ø±ÙŠ Ø±Ø¨Ø· Ø§Ù„Ù…ØªØ¬Ø±...");
+    const toastId = silent ? null : toast.loading("جاري ربط المتجر...");
     try {
       const res = await fetch(`${API_BASE}/stores/by-admin`, {
         method: "POST",
@@ -326,12 +324,12 @@ export default function StorePanel() {
       if (data?.store?.id) {
         setStoreId(data.store.id);
         setStoreLabel(data.store.name ?? null);
-        if (toastId) toast.success("ØªÙ… Ø±Ø¨Ø· Ø§Ù„Ù…ØªØ¬Ø±", { id: toastId });
+        if (toastId) toast.success("تم ربط المتجر", { id: toastId });
       } else if (toastId) {
-        toast.error(data?.error ?? "ØªØ¹Ø°Ø± Ø±Ø¨Ø· Ø§Ù„Ù…ØªØ¬Ø±", { id: toastId });
+        toast.error(data?.error ?? "تعذر ربط المتجر", { id: toastId });
       }
     } catch {
-      if (toastId) toast.error("Ø®Ø·Ø£ ÙÙŠ Ø§Ù„Ø´Ø¨ÙƒØ©", { id: toastId });
+      if (toastId) toast.error("خطأ في الشبكة", { id: toastId });
     }
   };
 
@@ -371,7 +369,7 @@ export default function StorePanel() {
       for (const order of nextOrders) {
         const previous = prevMap.get(order.id);
         if (!previous) {
-          toast.success(`Ø·Ù„Ø¨ Ø¬Ø¯ÙŠØ¯ ${order.id.slice(0, 6)}...`);
+          toast.success(`طلب جديد ${order.id.slice(0, 6)}...`);
           flashOrder(order.id);
         } else if (previous.status !== order.status) {
           toast.custom(
@@ -384,7 +382,7 @@ export default function StorePanel() {
                 <div className="flex items-center gap-2 text-slate-900">
                   <PackagePlus className="h-4 w-4 text-slate-600" />
                   <span>
-                    Ø­Ø§Ù„Ø© Ø§Ù„Ø·Ù„Ø¨ {order.id.slice(0, 6)}... Ø£ØµØ¨Ø­Øª{" "}
+                    حالة الطلب {order.id.slice(0, 6)}... أصبحت{" "}
                     {formatStatus(order.status)}
                   </span>
                 </div>
@@ -414,7 +412,7 @@ export default function StorePanel() {
         if (!hasLoadedRef.current) hasLoadedRef.current = true;
       }
     } catch {
-      if (showToasts) toast.error("ØªØ¹Ø°Ø± ØªØ­Ù…ÙŠÙ„ Ø§Ù„Ø·Ù„Ø¨Ø§Øª");
+      if (showToasts) toast.error("تعذر تحميل الطلبات");
     }
   };
 
@@ -439,7 +437,7 @@ export default function StorePanel() {
           if (!hasLoadedRef.current) hasLoadedRef.current = true;
         }
       } catch {
-        if (showToasts) toast.error("ØªØ¹Ø°Ø± ØªØ­Ù…ÙŠÙ„ Ø§Ù„Ø·Ù„Ø¨Ø§Øª");
+        if (showToasts) toast.error("تعذر تحميل الطلبات");
       }
     };
 
@@ -496,11 +494,11 @@ export default function StorePanel() {
             )
           );
         }
-        toast("ØªÙ… ØªØ­Ø¯ÙŠØ« Ø­Ø§Ù„Ø© Ø§Ù„Ø³Ø§Ø¦Ù‚");
+        toast("تم تحديث حالة السائق");
         return;
       }
       if (type === "driver_created") {
-        toast.success("ØªÙ… Ø¥Ù†Ø´Ø§Ø¡ Ø³Ø§Ø¦Ù‚ Ø¬Ø¯ÙŠØ¯");
+        toast.success("تم إنشاء سائق جديد");
         fetchDrivers();
         return;
       }
@@ -514,7 +512,7 @@ export default function StorePanel() {
             )
           );
         }
-        toast("ØªÙ… ØªØ¹Ø·ÙŠÙ„ Ø³Ø§Ø¦Ù‚");
+        toast("تم تعطيل سائق");
         return;
       }
       if (type === "driver_active") {
@@ -527,11 +525,11 @@ export default function StorePanel() {
             )
           );
         }
-        toast("ØªÙ… ØªÙØ¹ÙŠÙ„ Ø³Ø§Ø¦Ù‚");
+        toast("تم تفعيل سائق");
         return;
       }
       if (type === "wallet_transaction") {
-        toast("ØªÙ… ØªØ­Ø¯ÙŠØ« Ù…Ø­ÙØ¸Ø© Ø§Ù„Ø³Ø§Ø¦Ù‚");
+        toast("تم تحديث محفظة السائق");
         if (activeSection === "finance") {
           fetchLedger(ledgerPeriod);
         }
@@ -637,10 +635,10 @@ export default function StorePanel() {
   const createStore = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!storeName.trim()) {
-      toast.error("Ø§Ø³Ù… Ø§Ù„Ù…ØªØ¬Ø± Ù…Ø·Ù„ÙˆØ¨");
+      toast.error("اسم المتجر مطلوب");
       return;
     }
-    const toastId = toast.loading("Ø¬Ø§Ø±ÙŠ Ø¥Ù†Ø´Ø§Ø¡ Ø§Ù„Ù…ØªØ¬Ø±...");
+    const toastId = toast.loading("جاري إنشاء المتجر...");
     try {
       const res = await fetch(`${API_BASE}/stores`, {
         method: "POST",
@@ -652,33 +650,32 @@ export default function StorePanel() {
         setStoreId(data.store.id);
         setAdminCode(data.store.admin_code ?? "");
         setStoreLabel(data.store.name ?? null);
-        toast.success("ØªÙ… Ø¥Ù†Ø´Ø§Ø¡ Ø§Ù„Ù…ØªØ¬Ø±", { id: toastId });
+        toast.success("تم إنشاء المتجر", { id: toastId });
       } else {
-        toast.error(data?.error ?? "ÙØ´Ù„ Ø¥Ù†Ø´Ø§Ø¡ Ø§Ù„Ù…ØªØ¬Ø±", { id: toastId });
+        toast.error(data?.error ?? "فشل إنشاء المتجر", { id: toastId });
       }
     } catch {
-      toast.error("Ø®Ø·Ø£ ÙÙŠ Ø§Ù„Ø´Ø¨ÙƒØ©", { id: toastId });
+      toast.error("خطأ في الشبكة", { id: toastId });
     }
   };
 
   const createDriver = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!adminCode) {
-      toast.error("Ø±Ù…Ø² Ø§Ù„Ø¥Ø¯Ø§Ø±Ø© Ù…Ø·Ù„ÙˆØ¨");
+      toast.error("رمز الإدارة مطلوب");
       return;
     }
-    if (!driverName.trim() || !driverPhone.trim() || !driverEmail.trim()) {
-      toast.error("Ø§Ø³Ù… Ø§Ù„Ø³Ø§Ø¦Ù‚ ÙˆØ±Ù‚Ù… Ø§Ù„Ù‡Ø§ØªÙ Ù…Ø·Ù„ÙˆØ¨Ø§Ù†");
+    if (!driverName.trim() || !driverPhone.trim()) {
+      toast.error("اسم السائق ورقم الهاتف مطلوبان");
       return;
     }
-    const toastId = toast.loading("Ø¬Ø§Ø±ÙŠ Ø¥Ù†Ø´Ø§Ø¡ Ø§Ù„Ø³Ø§Ø¦Ù‚...");
+    const toastId = toast.loading("جاري إنشاء السائق...");
 
     try {
       const payload: Record<string, unknown> = {
         admin_code: adminCode,
         name: driverName,
         phone: driverPhone,
-        email: driverEmail,
       };
       if (storeId) payload.store_id = storeId;
 
@@ -693,15 +690,14 @@ export default function StorePanel() {
         setDriverCode(data.driver.secret_code);
         setDriverName("");
         setDriverPhone("");
-        setDriverEmail("");
-        toast.success("ØªÙ… Ø¥Ù†Ø´Ø§Ø¡ Ø§Ù„Ø³Ø§Ø¦Ù‚", { id: toastId });
-        toast("ØªÙ… ØªØ¬Ù‡ÙŠØ² ØµÙ†Ø¯ÙˆÙ‚ Ù†Ø³Ø® Ø§Ù„ÙƒÙˆØ¯", { icon: "âœ¨" });
+        toast.success("تم إنشاء السائق", { id: toastId });
+        toast("تم تجهيز صندوق نسخ الكود", { icon: "✨" });
         fetchDrivers();
       } else {
-        toast.error(data?.error ?? "ÙØ´Ù„ Ø¥Ù†Ø´Ø§Ø¡ Ø§Ù„Ø³Ø§Ø¦Ù‚", { id: toastId });
+        toast.error(data?.error ?? "فشل إنشاء السائق", { id: toastId });
       }
     } catch {
-      toast.error("Ø®Ø·Ø£ ÙÙŠ Ø§Ù„Ø´Ø¨ÙƒØ©", { id: toastId });
+      toast.error("خطأ في الشبكة", { id: toastId });
     }
   };
 
@@ -709,9 +705,9 @@ export default function StorePanel() {
     if (!driverCode) return;
     try {
       await navigator.clipboard.writeText(driverCode);
-      toast.success("ØªÙ… Ù†Ø³Ø® Ø§Ù„ÙƒÙˆØ¯");
+      toast.success("تم نسخ الكود");
     } catch {
-      toast.error("ØªØ¹Ø°Ø± Ø§Ù„Ù†Ø³Ø®");
+      toast.error("تعذر النسخ");
     }
   };
 
@@ -760,21 +756,21 @@ export default function StorePanel() {
 
   const updateWallet = async (type: "credit" | "debit") => {
     if (!adminCode) {
-      toast.error("Ø±Ù…Ø² Ø§Ù„Ø¥Ø¯Ø§Ø±Ø© Ù…Ø·Ù„ÙˆØ¨");
+      toast.error("رمز الإدارة مطلوب");
       return;
     }
     if (!walletDriverId.trim()) {
-      toast.error("Ù…Ø¹Ø±Ù‘Ù Ø§Ù„Ø³Ø§Ø¦Ù‚ Ù…Ø·Ù„ÙˆØ¨");
+      toast.error("معرّف السائق مطلوب");
       return;
     }
     const amountValue = Number(walletAmount);
     if (!Number.isFinite(amountValue) || amountValue <= 0) {
-      toast.error("Ø£Ø¯Ø®Ù„ Ù…Ø¨Ù„ØºØ§Ù‹ ØµØ­ÙŠØ­Ø§Ù‹");
+      toast.error("أدخل مبلغاً صحيحاً");
       return;
     }
 
     const toastId = toast.loading(
-      type === "credit" ? "Ø¬Ø§Ø±ÙŠ Ø´Ø­Ù† Ø§Ù„Ù…Ø­ÙØ¸Ø©..." : "Ø¬Ø§Ø±ÙŠ Ø³Ø­Ø¨ Ø§Ù„Ù…Ø¨Ù„Øº..."
+      type === "credit" ? "جاري شحن المحفظة..." : "جاري سحب المبلغ..."
     );
 
     try {
@@ -795,33 +791,33 @@ export default function StorePanel() {
       );
       const data = (await res.json()) as ApiResponse;
       if (data?.ok) {
-        toast.success("ØªÙ… ØªØ­Ø¯ÙŠØ« Ø§Ù„Ù…Ø­ÙØ¸Ø©", { id: toastId });
+        toast.success("تم تحديث المحفظة", { id: toastId });
         setWalletAmount("");
         setWalletNote("");
         fetchLedger(ledgerPeriod);
       } else {
-        toast.error(data?.error ?? "ÙØ´Ù„ ØªØ­Ø¯ÙŠØ« Ø§Ù„Ù…Ø­ÙØ¸Ø©", { id: toastId });
+        toast.error(data?.error ?? "فشل تحديث المحفظة", { id: toastId });
       }
     } catch {
-      toast.error("Ø®Ø·Ø£ ÙÙŠ Ø§Ù„Ø´Ø¨ÙƒØ©", { id: toastId });
+      toast.error("خطأ في الشبكة", { id: toastId });
     }
   };
 
   const setDriverActive = async (driverId: string, nextActive: boolean) => {
     if (!adminCode) {
-      toast.error("Ø±Ù…Ø² Ø§Ù„Ø¥Ø¯Ø§Ø±Ø© Ù…Ø·Ù„ÙˆØ¨");
+      toast.error("رمز الإدارة مطلوب");
       return;
     }
     if (!driverId) return;
     const confirmed = window.confirm(
       nextActive
-        ? "Ø³ÙŠØªÙ… ØªÙØ¹ÙŠÙ„ Ø§Ù„Ø³Ø§Ø¦Ù‚ Ù„Ù„Ø¹ÙˆØ¯Ø© Ù„Ù„Ø¹Ù…Ù„. Ù‡Ù„ ØªØ±ÙŠØ¯ Ø§Ù„Ù…ØªØ§Ø¨Ø¹Ø©ØŸ"
-        : "Ø³ÙŠØªÙ… ØªØ¹Ø·ÙŠÙ„ Ø§Ù„Ø³Ø§Ø¦Ù‚ ÙˆØ¥ÙŠÙ‚Ø§Ù Ø¸Ù‡ÙˆØ±Ù‡ ÙÙŠ Ø§Ù„Ù‚Ø§Ø¦Ù…Ø© Ø§Ù„Ù†Ø´Ø·Ø©. Ù‡Ù„ ØªØ±ÙŠØ¯ Ø§Ù„Ù…ØªØ§Ø¨Ø¹Ø©ØŸ"
+        ? "سيتم تفعيل السائق للعودة للعمل. هل تريد المتابعة؟"
+        : "سيتم تعطيل السائق وإيقاف ظهوره في القائمة النشطة. هل تريد المتابعة؟"
     );
     if (!confirmed) return;
 
     const toastId = toast.loading(
-      nextActive ? "Ø¬Ø§Ø±ÙŠ ØªÙØ¹ÙŠÙ„ Ø§Ù„Ø³Ø§Ø¦Ù‚..." : "Ø¬Ø§Ø±ÙŠ ØªØ¹Ø·ÙŠÙ„ Ø§Ù„Ø³Ø§Ø¦Ù‚..."
+      nextActive ? "جاري تفعيل السائق..." : "جاري تعطيل السائق..."
     );
     try {
       const res = await fetch(
@@ -834,25 +830,25 @@ export default function StorePanel() {
       );
       const data = (await res.json()) as ApiResponse;
       if (data?.ok) {
-        toast.success(nextActive ? "ØªÙ… ØªÙØ¹ÙŠÙ„ Ø§Ù„Ø³Ø§Ø¦Ù‚" : "ØªÙ… ØªØ¹Ø·ÙŠÙ„ Ø§Ù„Ø³Ø§Ø¦Ù‚", {
+        toast.success(nextActive ? "تم تفعيل السائق" : "تم تعطيل السائق", {
           id: toastId,
         });
         fetchDrivers();
       } else {
-        toast.error(data?.error ?? "ÙØ´Ù„ ØªØ­Ø¯ÙŠØ« Ø§Ù„Ø³Ø§Ø¦Ù‚", { id: toastId });
+        toast.error(data?.error ?? "فشل تحديث السائق", { id: toastId });
       }
     } catch {
-      toast.error("Ø®Ø·Ø£ ÙÙŠ Ø§Ù„Ø´Ø¨ÙƒØ©", { id: toastId });
+      toast.error("خطأ في الشبكة", { id: toastId });
     }
   };
 
   const createOrder = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!adminCode) {
-      toast.error("Ø±Ù…Ø² Ø§Ù„Ø¥Ø¯Ø§Ø±Ø© Ù…Ø·Ù„ÙˆØ¨");
+      toast.error("رمز الإدارة مطلوب");
       return;
     }
-    const toastId = toast.loading("Ø¬Ø§Ø±ÙŠ Ø¥Ù†Ø´Ø§Ø¡ Ø§Ù„Ø·Ù„Ø¨...");
+    const toastId = toast.loading("جاري إنشاء الطلب...");
 
     const formData = new FormData(e.currentTarget);
     const payload: Record<string, unknown> = {
@@ -878,12 +874,12 @@ export default function StorePanel() {
       const data = (await res.json()) as ApiResponse;
       if (data?.order?.id) {
         e.currentTarget.reset();
-        toast.success("ØªÙ… Ø¥Ù†Ø´Ø§Ø¡ Ø§Ù„Ø·Ù„Ø¨", { id: toastId });
+        toast.success("تم إنشاء الطلب", { id: toastId });
       } else {
-        toast.error(data?.error ?? "ÙØ´Ù„ Ø¥Ù†Ø´Ø§Ø¡ Ø§Ù„Ø·Ù„Ø¨", { id: toastId });
+        toast.error(data?.error ?? "فشل إنشاء الطلب", { id: toastId });
       }
     } catch {
-      toast.error("Ø®Ø·Ø£ ÙÙŠ Ø§Ù„Ø´Ø¨ÙƒØ©", { id: toastId });
+      toast.error("خطأ في الشبكة", { id: toastId });
     }
   };
 
@@ -902,7 +898,7 @@ export default function StorePanel() {
   return (
     <div dir="rtl" className="min-h-screen bg-slate-50 text-slate-900">
       <Toaster position="top-right" />
-      <div className="w-full px-6 py-10">
+      <div className="mx-auto max-w-[1400px] px-6 py-10">
         <header className="flex flex-col gap-6 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm md:flex-row md:items-center md:justify-between">
           <div className="flex items-center gap-4">
             <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-white">
@@ -910,27 +906,27 @@ export default function StorePanel() {
             </div>
             <div>
               <p className="text-xs tracking-[0.25em] text-slate-500">
-                Ù„ÙˆØ­Ø© Ø§Ù„ØªØ­ÙƒÙ… Ø§Ù„Ù„ÙˆØ¬Ø³ØªÙŠØ©
+                لوحة التحكم اللوجستية
               </p>
               <h1 className="text-3xl font-semibold tracking-tight">
-                Ù†ÙˆÙØ§ Ù…Ø§ÙƒØ³
+                نوفا ماكس
               </h1>
             </div>
           </div>
           <div className="grid grid-cols-2 gap-3 text-xs md:flex md:items-center">
             <div className="rounded-full border border-slate-200 bg-white px-4 py-2">
-              Ø§Ù„Ø¥Ø¬Ù…Ø§Ù„ÙŠ <span className="ml-2 font-semibold">{stats.total}</span>
+              الإجمالي <span className="ml-2 font-semibold">{stats.total}</span>
             </div>
             <div className="rounded-full border border-slate-200 bg-white px-4 py-2">
-              Ù‚ÙŠØ¯ Ø§Ù„Ø§Ù†ØªØ¸Ø§Ø±{" "}
+              قيد الانتظار{" "}
               <span className="ml-2 font-semibold">{stats.pending}</span>
             </div>
             <div className="rounded-full border border-slate-200 bg-white px-4 py-2">
-              Ù‚ÙŠØ¯ Ø§Ù„ØªÙˆØµÙŠÙ„{" "}
+              قيد التوصيل{" "}
               <span className="ml-2 font-semibold">{stats.delivering}</span>
             </div>
             <div className="rounded-full border border-slate-200 bg-white px-4 py-2">
-              ØªÙ… Ø§Ù„ØªØ³Ù„ÙŠÙ…{" "}
+              تم التسليم{" "}
               <span className="ml-2 font-semibold">{stats.delivered}</span>
             </div>
           </div>
@@ -1065,72 +1061,6 @@ export default function StorePanel() {
                   <Settings className="h-5 w-5 text-slate-500" />
                 </div>
                 <div className="mt-5 grid gap-3">
-                  <input
-                    className="h-11 rounded-lg border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-slate-400"
-                    placeholder="??? ???????"
-                    value={adminCode}
-                    onChange={(e) => setAdminCode(e.target.value)}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => resolveStore(false)}
-                    className="h-11 rounded-lg border border-slate-200 bg-white text-sm font-semibold text-slate-700 transition hover:border-slate-400"
-                  >
-                    ??? ?????? ??????
-                  </button>
-                </div>
-
-                {storeId && (
-                  <div className="mt-4 rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700">
-                    <p className="text-xs text-slate-500">?????? ??????</p>
-                    <p className="mt-1 font-semibold text-slate-900">
-                      {storeLabel ?? "?? ??? ??????"}
-                    </p>
-                  </div>
-                )}
-
-                <form onSubmit={createStore} className="mt-6 grid gap-3">
-                  <input
-                    className="h-11 rounded-lg border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-slate-400"
-                    placeholder="??? ??????"
-                    value={storeName}
-                    onChange={(e) => setStoreName(e.target.value)}
-                  />
-                  <button className="h-11 rounded-lg bg-orange-500 text-sm font-semibold text-white transition hover:bg-orange-600">
-                    ????? ??????
-                  </button>
-                </form>
-              </section>
-            )}
-
-            {activeSection === "drivers" && (
-              <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-                <div className="flex items-center gap-2 text-lg font-semibold">
-                  <UserPlus className="h-5 w-5 text-slate-600" />
-                  ????? ????????
-                </div>
-                <p className="mt-1 text-sm text-slate-500">
-                  ????? ???????? ??????? ??????? ???????.
-                </p>
-                <form onSubmit={createDriver} className="mt-5 grid gap-3 md:grid-cols-3">
-                  <input
-                    className="h-11 rounded-lg border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-slate-400"
-                    placeholder="??? ??????"
-                    value={driverName}
-                    onChange={(e) => setDriverName(e.target.value)}
-                  />
-                  <input
-                    className="h-11 rounded-lg border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-slate-400"
-                    placeholder="???? ??????"
-                    value={driverPhone}
-                    onChange={(e) => setDriverPhone(e.target.value)}
-                  />
-                  <input
-                    className="h-11 rounded-lg border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-slate-400"
-                    placeholder="?????? ??????????"
-                    value={driverEmail}
-                    onChange={(e) => setDriverEmail(e.target.value)}
-                  />
                   <button className="h-11 rounded-lg bg-orange-500 text-sm font-semibold text-white transition hover:bg-orange-600 md:col-span-3">
                     ????? ??????
                   </button>
@@ -1191,7 +1121,7 @@ export default function StorePanel() {
                               {driver.name ?? "???? ???"}
                             </p>
                             <p className="mt-1 text-xs text-slate-500">
-                              {driver.phone ?? "-"} ? {driver.email ?? "-"}
+                              {driver.phone ?? "-"}
                             </p>
                           </div>
                           <div className="flex flex-wrap items-center gap-2 text-xs">
@@ -1569,7 +1499,7 @@ export default function StorePanel() {
 
       <aside className="order-1 lg:order-2">
         <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm lg:sticky lg:top-6">
-          <p className="text-xs tracking-[0.25em] text-slate-500">Ø§Ù„Ø£Ù‚Ø³Ø§Ù…</p>
+          <p className="text-xs tracking-[0.25em] text-slate-500">الأقسام</p>
           <div className="mt-4 grid gap-2">
             {sectionNav.map((item) => (
               <button
@@ -1590,7 +1520,7 @@ export default function StorePanel() {
             onClick={clearStore}
             className="mt-6 flex w-full items-center justify-between rounded-lg border border-slate-200 bg-slate-100 px-4 py-3 text-sm font-semibold text-slate-800"
           >
-            ØªØ³Ø¬ÙŠÙ„ Ø§Ù„Ø®Ø±ÙˆØ¬
+            تسجيل الخروج
             <LogOut className="h-4 w-4" />
           </button>
         </div>
@@ -1600,7 +1530,6 @@ export default function StorePanel() {
   </div>
   );
 }
-
 
 
 
