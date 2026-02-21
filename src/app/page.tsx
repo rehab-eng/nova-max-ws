@@ -998,14 +998,17 @@ export default function StorePanel() {
                   <div className="mt-3 overflow-x-auto">
                     <table className="w-full text-right text-sm">
                       <thead className="text-xs text-slate-500">
-                        <tr>
-                          <th className="py-2">?????</th>
-                          <th>??????</th>
-                          <th>?????</th>
-                          <th>??????</th>
-                          <th className="text-left">??????</th>
-                        </tr>
-                      </thead>
+  <tr>
+    <th className="py-2">الرقم</th>
+    <th>العميل</th>
+    <th>المستلم</th>
+    <th>النوع</th>
+    <th>السائق</th>
+    <th>الحالة</th>
+    <th>الدفع</th>
+    <th className="text-left">الرسوم</th>
+  </tr>
+</thead>
                       <tbody className="divide-y divide-slate-200">
                         {recentOrders.map((order) => (
                           <tr key={order.id}>
@@ -1093,7 +1096,7 @@ export default function StorePanel() {
                       className="inline-flex items-center gap-2 text-xs text-slate-500"
                     >
                       <RefreshCw className="h-4 w-4" />
-                      ?????
+                      تحديث
                     </button>
                   </div>
                   <div className="mt-3 space-y-2 text-sm">
@@ -1417,23 +1420,23 @@ export default function StorePanel() {
                       className="inline-flex items-center gap-2 text-xs text-slate-500"
                     >
                       <RefreshCw className="h-4 w-4" />
-                      ?????
+                      تحديث
                     </button>
                   </div>
                   <div className="mt-4 overflow-x-auto">
                     <table className="w-full text-right text-sm">
                       <thead className="text-xs text-slate-500">
-                        <tr>
-                          <th className="py-2">?????</th>
-                          <th>??????</th>
-                          <th>???????</th>
-                          <th>?????</th>
-                          <th>??????</th>
-                          <th>??????</th>
-                          <th>?????</th>
-                          <th className="text-left">??????</th>
-                        </tr>
-                      </thead>
+  <tr>
+    <th className="py-2">الرقم</th>
+    <th>العميل</th>
+    <th>المستلم</th>
+    <th>النوع</th>
+    <th>السائق</th>
+    <th>الحالة</th>
+    <th>الدفع</th>
+    <th className="text-left">الرسوم</th>
+  </tr>
+</thead>
                       <tbody className="divide-y divide-slate-200">
                         {orders.map((order) => (
                           <tr
@@ -1529,6 +1532,7 @@ export default function StorePanel() {
   </div>
   );
 }
+
 
 
 
