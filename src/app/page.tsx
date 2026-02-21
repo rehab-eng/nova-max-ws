@@ -1175,7 +1175,7 @@ export default function StorePanel() {
                       حماية العمليات المالية
                     </div>
                     <p className="mt-2 text-xs text-slate-500">
-                      إنشاء طلب حماية العمليات المالية? ??? ??? ???تفعيل البصمة?.
+                      أكّد هويتك بالبصمة لعرض التفاصيل المالية.
                     </p>
                     <div className="mt-4 flex flex-wrap gap-2">
                       {!biometricLinked && (
@@ -1198,7 +1198,7 @@ export default function StorePanel() {
                         }}
                         className="h-10 rounded-lg bg-orange-500 px-4 text-xs font-semibold text-white"
                       >
-                        ???? ????
+                        فتح المالية
                       </button>
                     </div>
                   </div>
@@ -1342,7 +1342,7 @@ export default function StorePanel() {
                 <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
                   <div className="flex items-center gap-2 text-lg font-semibold">
                     <PackagePlus className="h-5 w-5 text-slate-600" />
-                    ????? ???
+                    إنشاء طلب
                   </div>
                   <form onSubmit={createOrder} className="mt-5 grid gap-3 md:grid-cols-2">
                     <input
@@ -1526,6 +1526,7 @@ export default function StorePanel() {
   </div>
   );
 }
+
 
 
 
