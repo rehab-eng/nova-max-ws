@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import Image from "next/image";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -159,6 +159,7 @@ export default function StorePanel() {
   const [storeLabel, setStoreLabel] = useState<string | null>(null);
   const [driverName, setDriverName] = useState("");
   const [driverPhone, setDriverPhone] = useState("");
+  const [driverEmail, setDriverEmail] = useState("");
   const [driverCode, setDriverCode] = useState<string | null>(null);
   const [walletDriverId, setWalletDriverId] = useState("");
   const [walletAmount, setWalletAmount] = useState("");
@@ -690,6 +691,7 @@ export default function StorePanel() {
         setDriverCode(data.driver.secret_code);
         setDriverName("");
         setDriverPhone("");
+        setDriverEmail("");
         toast.success("تم إنشاء السائق", { id: toastId });
         toast("تم تجهيز صندوق نسخ الكود", { icon: "✨" });
         fetchDrivers();
@@ -898,7 +900,7 @@ export default function StorePanel() {
   return (
     <div dir="rtl" className="min-h-screen bg-slate-50 text-slate-900">
       <Toaster position="top-right" />
-      <div className="mx-auto max-w-[1400px] px-6 py-10">
+      <div className="w-full px-6 py-10">
         <header className="flex flex-col gap-6 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm md:flex-row md:items-center md:justify-between">
           <div className="flex items-center gap-4">
             <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-white">
@@ -1530,6 +1532,7 @@ export default function StorePanel() {
   </div>
   );
 }
+
 
 
 
