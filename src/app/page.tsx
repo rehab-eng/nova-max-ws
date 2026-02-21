@@ -1086,7 +1086,14 @@ export default function StorePanel() {
                 <form onSubmit={createDriver} className="mt-5 grid gap-3 md:grid-cols-2">
   <input
     className="h-11 rounded-lg border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-slate-400"
-    placeholder="اسم السائق"
+    placeholder="كود الإدارة"
+    value={adminCode}
+    onChange={(e) => setAdminCode(e.target.value)}
+    required
+  />
+  <input
+    className="h-11 rounded-lg border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-slate-400"
+    placeholder="اسم المستخدم"
     value={driverName}
     onChange={(e) => setDriverName(e.target.value)}
     required
@@ -1567,6 +1574,7 @@ export default function StorePanel() {
   </div>
   );
 }
+
 
 
 
