@@ -159,7 +159,6 @@ export default function StorePanel() {
   const [storeLabel, setStoreLabel] = useState<string | null>(null);
   const [driverName, setDriverName] = useState("");
   const [driverPhone, setDriverPhone] = useState("");
-  const [driverEmail, setDriverEmail] = useState("");
   const [driverCode, setDriverCode] = useState<string | null>(null);
   const [walletDriverId, setWalletDriverId] = useState("");
   const [walletAmount, setWalletAmount] = useState("");
@@ -691,7 +690,6 @@ export default function StorePanel() {
         setDriverCode(data.driver.secret_code);
         setDriverName("");
         setDriverPhone("");
-        setDriverEmail("");
         toast.success("تم إنشاء السائق", { id: toastId });
         toast("تم تجهيز صندوق نسخ الكود", { icon: "✨" });
         fetchDrivers();
@@ -1532,6 +1530,7 @@ export default function StorePanel() {
   </div>
   );
 }
+
 
 
 
