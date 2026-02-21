@@ -1063,8 +1063,7 @@ export default function StorePanel() {
                 <div className="mt-5 grid gap-3">
                   <button className="h-11 rounded-lg bg-orange-500 text-sm font-semibold text-white transition hover:bg-orange-600 md:col-span-3">
                     ????? ??????
-                  </button>
-                </form>
+                  </button></div>
 
                 {driverCode && (
                   <div className="mt-5 rounded-lg border border-slate-200 bg-slate-50 p-4">
@@ -1530,6 +1529,7 @@ export default function StorePanel() {
   </div>
   );
 }
+
 
 
 
