@@ -1060,10 +1060,28 @@ export default function StorePanel() {
                   </div>
                   <Settings className="h-5 w-5 text-slate-500" />
                 </div>
-                <div className="mt-5 grid gap-3">
-                  <button className="h-11 rounded-lg bg-orange-500 text-sm font-semibold text-white transition hover:bg-orange-600 md:col-span-3">
-                    توليد كود السائق
-                  </button></div>
+                <form onSubmit={createDriver} className="mt-5 grid gap-3 md:grid-cols-2">
+  <input
+    className="h-11 rounded-lg border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-slate-400"
+    placeholder="اسم السائق"
+    value={driverName}
+    onChange={(e) => setDriverName(e.target.value)}
+    required
+  />
+  <input
+    className="h-11 rounded-lg border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-slate-400"
+    placeholder="رقم الهاتف"
+    value={driverPhone}
+    onChange={(e) => setDriverPhone(e.target.value)}
+    required
+  />
+  <button
+    type="submit"
+    className="h-11 rounded-lg bg-orange-500 text-sm font-semibold text-white transition hover:bg-orange-600 md:col-span-2"
+  >
+    توليد كود السائق
+  </button>
+</form>
 
                 {driverCode && (
                   <div className="mt-5 rounded-lg border border-slate-200 bg-slate-50 p-4">
@@ -1526,6 +1544,7 @@ export default function StorePanel() {
   </div>
   );
 }
+
 
 
 
