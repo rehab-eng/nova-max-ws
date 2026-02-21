@@ -7,6 +7,7 @@ import {
   ClipboardList,
   Copy,
   LayoutDashboard,
+  ListOrdered,
   LogOut,
   PackagePlus,
   RefreshCw,
@@ -66,21 +67,29 @@ type LedgerDriverRow = {
 
 type ApiResponse = Record<string, any>;
 
-type SectionKey = "dashboard" | "drivers" | "finance" | "inventory" | "settings";
+type SectionKey =
+  | "dashboard"
+  | "orders"
+  | "create_order"
+  | "drivers"
+  | "finance"
+  | "inventory"
+  | "settings";
 
 const sectionNav: Array<{ key: SectionKey; label: string; icon: typeof LayoutDashboard }> = [
   { key: "dashboard", label: "لوحة التحكم", icon: LayoutDashboard },
-  { key: "drivers", label: "إدارة السائقين", icon: Users },
-  { key: "finance", label: "العمليات المالية", icon: Wallet },
-  { key: "inventory", label: "الجرد", icon: ClipboardList },
+  { key: "orders", label: "قائمة الطلبات", icon: ClipboardList },
+  { key: "create_order", label: "إنشاء طلب", icon: PackagePlus },
+  { key: "drivers", label: "السائقون", icon: Users },
+  { key: "finance", label: "المالية", icon: Wallet },
+  { key: "inventory", label: "الجرد", icon: ListOrdered },
   { key: "settings", label: "الإعدادات", icon: Settings },
 ];
 
 const navButtonBase =
-  "rounded-lg border px-3 py-2 text-sm font-semibold transition flex items-center justify-between w-full";
-const navButtonActive = "border-slate-900 bg-slate-900 text-white";
-const navButtonInactive =
-  "border-slate-200 bg-white text-slate-700 hover:border-slate-400";
+  "w-full rounded-md px-3 py-2 text-sm font-semibold transition flex items-center justify-between text-right";
+const navButtonActive = "bg-slate-800 text-white";
+const navButtonInactive = "text-slate-300 hover:bg-slate-800/60";
 
 const statusStyles: Record<string, string> = {
   pending: "bg-slate-100 text-slate-700 border-slate-200",
@@ -113,6 +122,13 @@ const payoutLabels: Record<string, string> = {
 function formatPayout(value: string | null | undefined): string {
   if (!value) return "-";
   return payoutLabels[value] ?? value;
+}
+
+function formatDate(value?: string | null): string {
+  if (!value) return "-";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "-";
+  return date.toLocaleDateString("ar", { day: "2-digit", month: "short" });
 }
 
 const canUseWebAuthn = () =>
@@ -173,6 +189,9 @@ export default function StorePanel() {
   const [ledgerWallet, setLedgerWallet] = useState<LedgerWalletRow[]>([]);
   const [ledgerDrivers, setLedgerDrivers] = useState<LedgerDriverRow[]>([]);
   const [ledgerPeriod, setLedgerPeriod] = useState("daily");
+  const [inventoryQuery, setInventoryQuery] = useState("");
+  const [inventoryStatus, setInventoryStatus] = useState("all");
+  const [inventoryRange, setInventoryRange] = useState("30");
   const [biometricSupported, setBiometricSupported] = useState(false);
   const [biometricLinked, setBiometricLinked] = useState(false);
   const [financeUnlocked, setFinanceUnlocked] = useState(false);
@@ -304,6 +323,9 @@ export default function StorePanel() {
     }
     if (section === "finance") {
       fetchLedger(ledgerPeriod);
+    }
+    if (section === "orders" || section === "inventory" || section === "create_order") {
+      refreshOrders();
     }
     setActiveSection(section);
     if (typeof window !== "undefined") {
@@ -1006,6 +1028,7 @@ export default function StorePanel() {
     <th className="text-left">الرسوم</th>
   </tr>
 </thead>
+
                       <tbody className="divide-y divide-slate-200">
                         {recentOrders.map((order) => (
                           <tr key={order.id}>
@@ -1512,15 +1535,15 @@ export default function StorePanel() {
       </main>
 
       <aside className="order-1 lg:order-2">
-        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm lg:sticky lg:top-6">
-          <p className="text-xs tracking-[0.25em] text-slate-500">الأقسام</p>
+        <div className="rounded-2xl bg-slate-950 p-5 text-white shadow-sm lg:sticky lg:top-6">
+          <p className="text-xs tracking-[0.25em] text-slate-400">الأقسام</p>
           <div className="mt-4 grid gap-2">
             {sectionNav.map((item) => (
               <button
                 key={item.key}
                 type="button"
                 onClick={() => goToSection(item.key)}
-                className={`${navButtonBase} w-full text-right ${
+                className={`${navButtonBase} ${
                   activeSection === item.key ? navButtonActive : navButtonInactive
                 }`}
               >
@@ -1532,7 +1555,7 @@ export default function StorePanel() {
           <button
             type="button"
             onClick={clearStore}
-            className="mt-6 flex w-full items-center justify-between rounded-lg border border-slate-200 bg-slate-100 px-4 py-3 text-sm font-semibold text-slate-800"
+            className="mt-6 flex w-full items-center justify-between rounded-md bg-slate-900 px-4 py-3 text-sm font-semibold text-slate-100 hover:bg-slate-800"
           >
             تسجيل الخروج
             <LogOut className="h-4 w-4" />
