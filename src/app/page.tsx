@@ -955,9 +955,9 @@ export default function StorePanel() {
               <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
                 <div className="flex items-center justify-between">
                   <div>
-                    <h2 className="text-lg font-semibold">???? ??????</h2>
+                    <h2 className="text-lg font-semibold">لوحة التحكم</h2>
                     <p className="mt-1 text-sm text-slate-500">
-                      ???? ???????? ???????? ??????.
+                      ملخص سريع لأهم مؤشرات التشغيل.
                     </p>
                   </div>
                   <LayoutDashboard className="h-5 w-5 text-slate-500" />
@@ -965,47 +965,44 @@ export default function StorePanel() {
 
                 <div className="mt-4 grid gap-4 md:grid-cols-3">
                   <div className="rounded-lg border border-slate-200 p-4">
-                    <p className="text-xs text-slate-500">??????</p>
+                    <p className="text-xs text-slate-500">المتجر</p>
                     <p className="mt-1 text-sm font-semibold text-slate-900">
-                      {storeLabel ?? "??? ?????"}
+                      {storeLabel ?? "غير محدد"}
                     </p>
                     <p className="mt-2 text-xs text-slate-500">
-                      ?????: {storeId || "-"}
+                      المعرّف: {storeId || "-"}
                     </p>
                   </div>
                   <div className="rounded-lg border border-slate-200 p-4">
-                    <p className="text-xs text-slate-500">???????? ???????</p>
+                    <p className="text-xs text-slate-500">السائقون النشطون</p>
                     <p className="mt-1 text-2xl font-semibold text-slate-900">
                       {activeDriversCount}
                     </p>
                     <p className="mt-1 text-xs text-slate-500">
-                      ???? ????: {onlineDriversCount}
+                      متصل الآن: {onlineDriversCount}
                     </p>
                   </div>
                   <div className="rounded-lg border border-slate-200 p-4">
-                    <p className="text-xs text-slate-500">????? ?????</p>
+                    <p className="text-xs text-slate-500">إجمالي الطلبات</p>
                     <p className="mt-1 text-2xl font-semibold text-slate-900">
                       {stats.total}
                     </p>
                     <p className="mt-1 text-xs text-slate-500">
-                      ??? ???????: {stats.delivering}
+                      قيد التوصيل: {stats.delivering}
                     </p>
                   </div>
                 </div>
 
                 <div className="mt-6">
-                  <p className="text-sm font-semibold text-slate-800">??? ???????</p>
+                  <p className="text-sm font-semibold text-slate-800">آخر الطلبات</p>
                   <div className="mt-3 overflow-x-auto">
                     <table className="w-full text-right text-sm">
                       <thead className="text-xs text-slate-500">
   <tr>
     <th className="py-2">الرقم</th>
     <th>العميل</th>
-    <th>المستلم</th>
     <th>النوع</th>
-    <th>السائق</th>
     <th>الحالة</th>
-    <th>الدفع</th>
     <th className="text-left">الرسوم</th>
   </tr>
 </thead>
@@ -1041,7 +1038,7 @@ export default function StorePanel() {
                         {recentOrders.length === 0 && (
                           <tr>
                             <td colSpan={5} className="py-6 text-center text-slate-500">
-                              ?? ???? ????? ???.
+                              لا توجد طلبات حالياً.
                             </td>
                           </tr>
                         )}
@@ -1056,21 +1053,21 @@ export default function StorePanel() {
               <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
                 <div className="flex items-center justify-between">
                   <div>
-                    <h2 className="text-lg font-semibold">????????? ????????</h2>
+                    <h2 className="text-lg font-semibold">إعدادات النظام</h2>
                     <p className="mt-1 text-sm text-slate-500">
-                      ????? ?????? ?????? ???? ??? ???????.
+                      إدارة بيانات الوصول والرموز الخاصة بالنظام.
                     </p>
                   </div>
                   <Settings className="h-5 w-5 text-slate-500" />
                 </div>
                 <div className="mt-5 grid gap-3">
                   <button className="h-11 rounded-lg bg-orange-500 text-sm font-semibold text-white transition hover:bg-orange-600 md:col-span-3">
-                    ????? ??????
+                    توليد كود السائق
                   </button></div>
 
                 {driverCode && (
                   <div className="mt-5 rounded-lg border border-slate-200 bg-slate-50 p-4">
-                    <p className="text-xs text-slate-500">????? ????? ??????</p>
+                    <p className="text-xs text-slate-500">كود السائق الحالي</p>
                     <div className="mt-2 flex items-center justify-between gap-3">
                       <span className="text-xl font-semibold text-slate-900">
                         {driverCode}
@@ -1081,7 +1078,7 @@ export default function StorePanel() {
                         type="button"
                       >
                         <Copy className="h-4 w-4" />
-                        ???
+                        نسخ
                       </button>
                     </div>
                   </div>
@@ -1089,7 +1086,7 @@ export default function StorePanel() {
 
                 <div className="mt-6 rounded-lg border border-slate-200 bg-white p-4">
                   <div className="flex items-center justify-between">
-                    <p className="text-sm font-semibold text-slate-900">????? ????????</p>
+                    <p className="text-sm font-semibold text-slate-900">قائمة السائقين</p>
                     <button
                       type="button"
                       onClick={fetchDrivers}
@@ -1102,17 +1099,17 @@ export default function StorePanel() {
                   <div className="mt-3 space-y-2 text-sm">
                     {driversLoading && (
                       <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-3 text-center text-slate-500">
-                        ???? ????? ????????...
+                        جاري تحميل السائقين...
                       </div>
                     )}
                     {!driversLoading && drivers.length == 0 && (
                       <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-3 text-center text-slate-500">
-                        ?? ???? ?????? ???.
+                        لا يوجد سائقون بعد.
                       </div>
                     )}
                     {drivers.map((driver) => {
                       const isActive = driver.is_active != 0;
-                      const statusLabel = driver.status == "online" ? "????" : "??? ????";
+                      const statusLabel = driver.status == "online" ? "متصل" : "غير متصل";
                       return (
                         <div
                           key={driver.id}
@@ -1120,7 +1117,7 @@ export default function StorePanel() {
                         >
                           <div>
                             <p className="text-sm font-semibold text-slate-900">
-                              {driver.name ?? "???? ???"}
+                              {driver.name ?? "سائق جديد"}
                             </p>
                             <p className="mt-1 text-xs text-slate-500">
                               {driver.phone ?? "-"}
@@ -1131,7 +1128,7 @@ export default function StorePanel() {
                               {statusLabel}
                             </span>
                             <span className="rounded-full border border-slate-200 bg-white px-2 py-1 text-slate-700">
-                              {isActive ? "?????" : "?????"}
+                              {isActive ? "مفعل" : "معطل"}
                             </span>
                             <button
                               type="button"
@@ -1142,7 +1139,7 @@ export default function StorePanel() {
                                   : "bg-orange-500 text-white hover:bg-orange-600"
                               }`}
                             >
-                              {isActive ? "?????" : "?????"}
+                              {isActive ? "تعطيل" : "تفعيل"}
                             </button>
                           </div>
                         </div>
@@ -1157,9 +1154,9 @@ export default function StorePanel() {
               <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
                 <div className="flex items-center justify-between">
                   <div>
-                    <h2 className="text-lg font-semibold">???????? ???????</h2>
+                    <h2 className="text-lg font-semibold">العمليات المالية</h2>
                     <p className="mt-1 text-sm text-slate-500">
-                      ????? ??????? ?????? ?????? ??????.
+                      إدارة حركات المحفظة والتحويلات المالية.
                     </p>
                   </div>
                   <Wallet className="h-5 w-5 text-slate-500" />
@@ -1167,7 +1164,7 @@ export default function StorePanel() {
 
                 {!adminCode && (
                   <div className="mt-4 rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
-                    ???? ??? ??????? ????? ?????? ??? ???????? ???????.
+                    أدخل كود الإدارة لفتح لوحة المالية.
                   </div>
                 )}
 
@@ -1175,10 +1172,10 @@ export default function StorePanel() {
                   <div className="mt-4 rounded-lg border border-slate-200 bg-slate-50 p-5">
                     <div className="flex items-center gap-2 text-sm font-semibold text-slate-800">
                       <ShieldCheck className="h-4 w-4" />
-                      ????? ?????? ??????
+                      حماية العمليات المالية
                     </div>
                     <p className="mt-2 text-xs text-slate-500">
-                      ????? ??? ????? ?????? ??????? ??? ??? ???????? ???????.
+                      إنشاء طلب حماية العمليات المالية? ??? ??? ???تفعيل البصمة?.
                     </p>
                     <div className="mt-4 flex flex-wrap gap-2">
                       {!biometricLinked && (
@@ -1190,7 +1187,7 @@ export default function StorePanel() {
                           }}
                           className="h-10 rounded-lg border border-slate-200 bg-white px-4 text-xs font-semibold text-slate-700"
                         >
-                          ????? ??????
+                          ?فتح المالية??
                         </button>
                       )}
                       <button
@@ -1211,12 +1208,12 @@ export default function StorePanel() {
                   <div className="mt-6 grid gap-6 lg:grid-cols-2">
                     <div className="rounded-lg border border-slate-200 bg-white p-4">
                       <p className="text-sm font-semibold text-slate-900">
-                        ?????? ???????
+                        شحن محفظة السائق
                       </p>
                       <div className="mt-4 grid gap-3">
                         <input
                           className="h-11 rounded-lg border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-slate-400"
-                          placeholder="????? ??????"
+                          placeholder="معرّف السائق"
                           value={walletDriverId}
                           onChange={(e) => setWalletDriverId(e.target.value)}
                         />
@@ -1224,7 +1221,7 @@ export default function StorePanel() {
                           type="number"
                           step="0.01"
                           className="h-11 rounded-lg border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-slate-400"
-                          placeholder="??????"
+                          placeholder="المبلغ"
                           value={walletAmount}
                           onChange={(e) => setWalletAmount(e.target.value)}
                         />
@@ -1233,14 +1230,14 @@ export default function StorePanel() {
                           value={walletMethod}
                           onChange={(e) => setWalletMethod(e.target.value)}
                         >
-                          <option value="wallet">????? ?????</option>
-                          <option value="card">????? ??????</option>
-                          <option value="cash">?????</option>
-                          <option value="bank_transfer">????? ??????</option>
+                          <option value="wallet">محفظة محلية</option>
+                          <option value="card">بطاقة مصرفية</option>
+                          <option value="cash">نقداً</option>
+                          <option value="bank_transfer">حوالة مصرفية</option>
                         </select>
                         <input
                           className="h-11 rounded-lg border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-slate-400"
-                          placeholder="?????? (???????)"
+                          placeholder="ملاحظة (اختياري)"
                           value={walletNote}
                           onChange={(e) => setWalletNote(e.target.value)}
                         />
@@ -1250,14 +1247,14 @@ export default function StorePanel() {
                             onClick={() => updateWallet("credit")}
                             className="h-11 rounded-lg bg-orange-500 text-sm font-semibold text-white hover:bg-orange-600"
                           >
-                            ??? ???????
+                            إضافة رصيد
                           </button>
                           <button
                             type="button"
                             onClick={() => updateWallet("debit")}
                             className="h-11 rounded-lg border border-slate-200 bg-white text-sm font-semibold text-slate-700 hover:border-slate-400"
                           >
-                            ??? ??????
+                            سحب رصيد
                           </button>
                         </div>
                       </div>
@@ -1266,22 +1263,22 @@ export default function StorePanel() {
                     <div className="rounded-lg border border-slate-200 bg-white p-4">
                       <div className="flex items-center justify-between">
                         <p className="text-sm font-semibold text-slate-900">
-                          ????? ?????? ??????
+                          حماية العمليات المالية
                         </p>
                         <select
                           className="rounded-lg border border-slate-200 bg-white px-3 py-1 text-xs text-slate-700"
                           value={ledgerPeriod}
                           onChange={(e) => setLedgerPeriod(e.target.value)}
                         >
-                          <option value="daily">????</option>
-                          <option value="weekly">??????</option>
-                          <option value="monthly">????</option>
+                          <option value="daily">يومي</option>
+                          <option value="weekly">أسبوعي</option>
+                          <option value="monthly">شهري</option>
                         </select>
                       </div>
 
                       <div className="mt-4 grid gap-4 text-sm">
                         <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
-                          <p className="text-xs text-slate-500">????? ???????</p>
+                          <p className="text-xs text-slate-500">إجمالي التوصيل</p>
                           {ledgerSummary.slice(0, 4).map((row) => (
                             <div
                               key={`orders-${row.period}`}
@@ -1294,12 +1291,12 @@ export default function StorePanel() {
                             </div>
                           ))}
                           {ledgerSummary.length == 0 && (
-                            <p className="mt-2 text-xs text-slate-500">?? ???? ??????.</p>
+                            <p className="mt-2 text-xs text-slate-500">لا توجد بيانات بعد.</p>
                           )}
                         </div>
 
                         <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
-                          <p className="text-xs text-slate-500">????? ???????</p>
+                          <p className="text-xs text-slate-500">حركات المحفظة</p>
                           {ledgerWallet.slice(0, 4).map((row) => (
                             <div
                               key={`wallet-${row.period}`}
@@ -1312,12 +1309,12 @@ export default function StorePanel() {
                             </div>
                           ))}
                           {ledgerWallet.length == 0 && (
-                            <p className="mt-2 text-xs text-slate-500">?? ???? ??????.</p>
+                            <p className="mt-2 text-xs text-slate-500">لا توجد بيانات بعد.</p>
                           )}
                         </div>
 
                         <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
-                          <p className="text-xs text-slate-500">???? ????????</p>
+                          <p className="text-xs text-slate-500">أداء السائقين</p>
                           {ledgerDrivers.slice(0, 4).map((row) => (
                             <div
                               key={`driver-${row.driver_id}-${row.period}`}
@@ -1330,7 +1327,7 @@ export default function StorePanel() {
                             </div>
                           ))}
                           {ledgerDrivers.length == 0 && (
-                            <p className="mt-2 text-xs text-slate-500">?? ???? ??????.</p>
+                            <p className="mt-2 text-xs text-slate-500">لا توجد بيانات بعد.</p>
                           )}
                         </div>
                       </div>
@@ -1351,25 +1348,25 @@ export default function StorePanel() {
                     <input
                       name="customer_name"
                       className="h-11 rounded-lg border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-slate-400"
-                      placeholder="??? ??????"
+                      placeholder="اسم العميل"
                       required
                     />
                     <input
                       name="receiver_name"
                       className="h-11 rounded-lg border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-slate-400"
-                      placeholder="??? ???????"
+                      placeholder="اسم المستلم"
                       required
                     />
                     <input
                       name="customer_location_text"
                       className="h-11 rounded-lg border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-slate-400"
-                      placeholder="???? ?????"
+                      placeholder="عنوان العميل"
                       required
                     />
                     <input
                       name="order_type"
                       className="h-11 rounded-lg border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-slate-400"
-                      placeholder="??? ?????"
+                      placeholder="نوع الطلب"
                       required
                     />
                     <input
@@ -1377,14 +1374,14 @@ export default function StorePanel() {
                       type="number"
                       step="0.01"
                       className="h-11 rounded-lg border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-slate-400"
-                      placeholder="??? ?????"
+                      placeholder="سعر الطلب"
                     />
                     <input
                       name="delivery_fee"
                       type="number"
                       step="0.01"
                       className="h-11 rounded-lg border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-slate-400"
-                      placeholder="???? ???????"
+                      placeholder="رسوم التوصيل"
                     />
                     <select
                       name="payout_method"
@@ -1393,27 +1390,27 @@ export default function StorePanel() {
                       required
                     >
                       <option value="" disabled>
-                        ????? ??? ??????? ??????
+                        اختر طريقة الدفع
                       </option>
-                      <option value="card">????? ??????</option>
-                      <option value="wallet">????? ?????</option>
-                      <option value="cash">?????</option>
-                      <option value="bank_transfer">????? ??????</option>
+                      <option value="card">بطاقة مصرفية</option>
+                      <option value="wallet">محفظة محلية</option>
+                      <option value="cash">نقداً</option>
+                      <option value="bank_transfer">حوالة مصرفية</option>
                     </select>
                     <input
                       name="driver_id"
                       className="h-11 rounded-lg border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-slate-400"
-                      placeholder="????? ?????? (???????)"
+                      placeholder="معرّف السائق (اختياري)"
                     />
                     <button className="h-11 rounded-lg bg-orange-500 text-sm font-semibold text-white transition hover:bg-orange-600 md:col-span-2">
-                      ????? ?????
+                      إنشاء الطلب
                     </button>
                   </form>
                 </section>
 
                 <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
                   <div className="flex items-center justify-between">
-                    <p className="text-lg font-semibold">????? ????????</p>
+                    <p className="text-lg font-semibold">قائمة الطلبات</p>
                     <button
                       type="button"
                       onClick={() => refreshOrders(true)}
@@ -1429,11 +1426,8 @@ export default function StorePanel() {
   <tr>
     <th className="py-2">الرقم</th>
     <th>العميل</th>
-    <th>المستلم</th>
     <th>النوع</th>
-    <th>السائق</th>
     <th>الحالة</th>
-    <th>الدفع</th>
     <th className="text-left">الرسوم</th>
   </tr>
 </thead>
@@ -1487,7 +1481,7 @@ export default function StorePanel() {
                         {orders.length == 0 && (
                           <tr>
                             <td colSpan={8} className="py-6 text-center text-slate-500">
-                              ?? ???? ????? ???.
+                              لا توجد طلبات حالياً.
                             </td>
                           </tr>
                         )}
@@ -1532,6 +1526,8 @@ export default function StorePanel() {
   </div>
   );
 }
+
+
 
 
 
