@@ -1091,7 +1091,7 @@ export default function StorePanel() {
               </section>
             )}
 
-            {activeSection === "settings" && (
+            {(activeSection === "settings" || activeSection === "drivers") && (
               <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
                 <div className="flex items-center justify-between">
                   <div>
@@ -1593,6 +1593,7 @@ export default function StorePanel() {
   </div>
   );
 }
+
 
 
 
