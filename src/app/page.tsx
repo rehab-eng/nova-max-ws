@@ -1102,7 +1102,49 @@ export default function StorePanel() {
                   </div>
                   <Settings className="h-5 w-5 text-slate-500" />
                 </div>
-                <form onSubmit={createDriver} className="mt-5 grid gap-3 md:grid-cols-2">
+                                <div className="mt-5 rounded-lg border border-slate-200 bg-slate-50 p-4">
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm font-semibold text-slate-900">بيانات المتجر</p>
+                    <button
+                      type="button"
+                      onClick={() => resolveStore(false)}
+                      className="inline-flex items-center gap-2 text-xs text-slate-500"
+                    >
+                      <RefreshCw className="h-4 w-4" />
+                      ربط المتجر
+                    </button>
+                  </div>
+                  <form onSubmit={createStore} className="mt-4 grid gap-3 md:grid-cols-2">
+                    <input
+                      className="h-11 rounded-lg border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-slate-400"
+                      placeholder="اسم المتجر الجديد"
+                      value={storeName}
+                      onChange={(e) => setStoreName(e.target.value)}
+                      required
+                    />
+                    <button
+                      type="submit"
+                      className="h-11 rounded-lg bg-slate-900 text-sm font-semibold text-white transition hover:bg-slate-800"
+                    >
+                      إنشاء متجر
+                    </button>
+                  </form>
+                  <div className="mt-4 grid gap-3 md:grid-cols-3 text-xs">
+                    <div className="rounded-lg border border-slate-200 bg-white px-3 py-3">
+                      <p className="text-slate-500">المتجر</p>
+                      <p className="mt-1 font-semibold text-slate-900">{storeLabel ?? "-"}</p>
+                    </div>
+                    <div className="rounded-lg border border-slate-200 bg-white px-3 py-3">
+                      <p className="text-slate-500">كود المتجر</p>
+                      <p className="mt-1 font-semibold text-slate-900">{storeCode || "-"}</p>
+                    </div>
+                    <div className="rounded-lg border border-slate-200 bg-white px-3 py-3">
+                      <p className="text-slate-500">كود الإدارة</p>
+                      <p className="mt-1 font-semibold text-slate-900">{adminCode || "-"}</p>
+                    </div>
+                  </div>
+                </div>
+<form onSubmit={createDriver} className="mt-5 grid gap-3 md:grid-cols-2">
   <input
     className="h-11 rounded-lg border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-slate-400"
     placeholder="كود الإدارة"
@@ -1593,6 +1635,7 @@ export default function StorePanel() {
   </div>
   );
 }
+
 
 
 
