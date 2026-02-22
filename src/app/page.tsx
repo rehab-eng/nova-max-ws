@@ -43,6 +43,8 @@ type DriverRow = {
   status: string | null;
   wallet_balance: number | null;
   is_active: number | null;
+  driver_code?: string | null;
+  secret_code?: string | null;
 };
 
 type LedgerSummaryRow = {
@@ -170,6 +172,7 @@ function buildWsUrl(path: string, params: Record<string, string>): string {
 
 export default function StorePanel() {
   const [storeId, setStoreId] = useState("");
+  const [storeCode, setStoreCode] = useState("");
   const [adminCode, setAdminCode] = useState("");
   const [storeName, setStoreName] = useState("");
   const [storeLabel, setStoreLabel] = useState<string | null>(null);
@@ -202,12 +205,17 @@ export default function StorePanel() {
 
   useEffect(() => {
     setStoreId(localStorage.getItem("nova.store_id") ?? "");
+    setStoreCode(localStorage.getItem("nova.store_code") ?? "");
     setAdminCode(localStorage.getItem("nova.admin_code") ?? "");
   }, []);
 
   useEffect(() => {
     localStorage.setItem("nova.store_id", storeId);
   }, [storeId]);
+
+  useEffect(() => {
+    localStorage.setItem("nova.store_code", storeCode);
+  }, [storeCode]);
 
   useEffect(() => {
     localStorage.setItem("nova.admin_code", adminCode);
@@ -232,8 +240,10 @@ export default function StorePanel() {
 
   const clearStore = () => {
     localStorage.removeItem("nova.store_id");
+    localStorage.removeItem("nova.store_code");
     localStorage.removeItem("nova.admin_code");
     setStoreId("");
+    setStoreCode("");
     setAdminCode("");
     setStoreLabel(null);
     setFinanceUnlocked(false);
@@ -346,6 +356,7 @@ export default function StorePanel() {
       if (data?.store?.id) {
         setStoreId(data.store.id);
         setStoreLabel(data.store.name ?? null);
+        setStoreCode(data.store.store_code ?? "");
         if (toastId) toast.success("تم ربط المتجر", { id: toastId });
       } else if (toastId) {
         toast.error(data?.error ?? "تعذر ربط المتجر", { id: toastId });
@@ -670,6 +681,7 @@ export default function StorePanel() {
       const data = (await res.json()) as ApiResponse;
       if (data?.store?.id) {
         setStoreId(data.store.id);
+        setStoreCode(data.store.store_code ?? "");
         setAdminCode(data.store.admin_code ?? "");
         setStoreLabel(data.store.name ?? null);
         toast.success("تم إنشاء المتجر", { id: toastId });
@@ -708,8 +720,9 @@ export default function StorePanel() {
       });
 
       const data = (await res.json()) as ApiResponse;
-      if (data?.driver?.secret_code) {
-        setDriverCode(data.driver.secret_code);
+      const code = data?.driver?.driver_code ?? data?.driver?.secret_code;
+      if (code) {
+        setDriverCode(code);
         setDriverName("");
         setDriverPhone("");
         toast.success("تم إنشاء السائق", { id: toastId });
@@ -742,7 +755,11 @@ export default function StorePanel() {
       );
       const data = (await res.json()) as ApiResponse;
       if (data?.drivers) {
-        setDrivers(data.drivers as DriverRow[]);
+        const drivers = (data.drivers as DriverRow[]).map((driver) => ({
+          ...driver,
+          driver_code: (driver as any).driver_code ?? (driver as any).secret_code ?? null,
+        }));
+        setDrivers(drivers);
       }
     } catch {
       // ignore
@@ -882,8 +899,10 @@ export default function StorePanel() {
       payout_method: formData.get("payout_method"),
       price: formData.get("price"),
       delivery_fee: formData.get("delivery_fee"),
-      driver_id: formData.get("driver_id"),
     };
+    const driverCode = String(formData.get("driver_code") ?? "").trim();
+    if (driverCode) payload.driver_code = driverCode;
+
     if (storeId) payload.store_id = storeId;
 
     try {
@@ -1446,7 +1465,7 @@ export default function StorePanel() {
                       <option value="bank_transfer">حوالة مصرفية</option>
                     </select>
                     <input
-                      name="driver_id"
+                      name="driver_code"
                       className="h-11 rounded-lg border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-slate-400"
                       placeholder="معرّف السائق (اختياري)"
                     />
