@@ -1,6 +1,5 @@
 ﻿"use client";
 
-import Image from "next/image";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Toaster, toast } from "react-hot-toast";
 import {
@@ -18,7 +17,7 @@ import {
   Wallet,
 } from "lucide-react";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE ?? "http://localhost:8787";
+const API_BASE = process.env.NEXT_PUBLIC_API_BASE ?? "https://nova-backend.rehabha770.workers.dev";
 
 type Order = {
   id: string;
@@ -650,7 +649,16 @@ export default function StorePanel() {
     return { total, pending, delivering, delivered };
   }, [orders]);
 
-  const recentOrders = useMemo(() => orders.slice(0, 5), [orders]);
+  const sortedOrders = useMemo(() => {
+    return [...orders].sort((a, b) => {
+      const ta = a.created_at ? new Date(a.created_at).getTime() : 0;
+      const tb = b.created_at ? new Date(b.created_at).getTime() : 0;
+      if (ta !== tb) return tb - ta;
+      return a.id.localeCompare(b.id);
+    });
+  }, [orders]);
+
+  const recentOrders = useMemo(() => sortedOrders.slice(0, 5), [sortedOrders]);
 
   const activeDriversCount = useMemo(
     () => drivers.filter((driver) => driver.is_active !== 0).length,
@@ -664,6 +672,47 @@ export default function StorePanel() {
       ).length,
     [drivers]
   );
+
+  const sortedDrivers = useMemo(() => {
+    return [...drivers].sort((a, b) => {
+      const aActive = a.is_active !== 0;
+      const bActive = b.is_active !== 0;
+      if (aActive !== bActive) return aActive ? -1 : 1;
+      const aOnline = a.status === "online";
+      const bOnline = b.status === "online";
+      if (aOnline !== bOnline) return aOnline ? -1 : 1;
+      return (a.name ?? "").localeCompare(b.name ?? "");
+    });
+  }, [drivers]);
+
+  const inventoryOrders = useMemo(() => {
+    const query = inventoryQuery.trim().toLowerCase();
+    const range = inventoryRange === "all" ? null : Number(inventoryRange);
+    const cutoff = range ? Date.now() - range * 86400000 : null;
+
+    return sortedOrders.filter((order) => {
+      if (inventoryStatus !== "all" && order.status !== inventoryStatus) {
+        return false;
+      }
+      if (cutoff && order.created_at) {
+        const time = new Date(order.created_at).getTime();
+        if (!Number.isNaN(time) && time < cutoff) return false;
+      }
+      if (query) {
+        const hay = [
+          order.customer_name,
+          order.receiver_name,
+          order.order_type,
+          order.driver_id,
+        ]
+          .filter(Boolean)
+          .join(" ")
+          .toLowerCase();
+        if (!hay.includes(query)) return false;
+      }
+      return true;
+    });
+  }, [sortedOrders, inventoryQuery, inventoryStatus, inventoryRange]);
 
   const createStore = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -943,7 +992,7 @@ export default function StorePanel() {
         <header className="flex flex-col gap-6 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm md:flex-row md:items-center md:justify-between">
           <div className="flex items-center gap-4">
             <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-white">
-              <Image src="/logo.webp" alt="NOVA MAX" width={48} height={48} />
+              <div className="flex h-14 w-14 items-center justify-center rounded-2xl border border-slate-200 bg-white text-[11px] font-semibold tracking-[0.2em] text-slate-500">NOVA</div>
             </div>
             <div>
               <p className="text-xs tracking-[0.25em] text-slate-500">
@@ -1211,12 +1260,12 @@ export default function StorePanel() {
                         جاري تحميل السائقين...
                       </div>
                     )}
-                    {!driversLoading && drivers.length == 0 && (
+                    {!driversLoading && sortedDrivers.length == 0 && (
                       <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-3 text-center text-slate-500">
-                        لا يوجد سائقون بعد.
+                        {adminCode ? "لا يوجد سائقون بعد." : "أدخل كود الإدارة لعرض السائقين."}
                       </div>
                     )}
-                    {drivers.map((driver) => {
+                    {sortedDrivers.map((driver) => {
                       const isActive = driver.is_active != 0;
                       const statusLabel = driver.status == "online" ? "متصل" : "غير متصل";
                       return (
@@ -1230,6 +1279,9 @@ export default function StorePanel() {
                             </p>
                             <p className="mt-1 text-xs text-slate-500">
                               {driver.phone ?? "-"}
+                            </p>
+                            <p className="mt-1 text-xs text-slate-500">
+                              كود السائق: {driver.driver_code ?? "-"}
                             </p>
                           </div>
                           <div className="flex flex-wrap items-center gap-2 text-xs">
@@ -1446,159 +1498,273 @@ export default function StorePanel() {
               </section>
             )}
 
-            {activeSection === "inventory" && (
-              <div className="space-y-6">
-                <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-                  <div className="flex items-center gap-2 text-lg font-semibold">
-                    <PackagePlus className="h-5 w-5 text-slate-600" />
-                    إنشاء طلب
+            {activeSection === "create_order" && (
+              <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+                <div className="flex items-center gap-2 text-lg font-semibold">
+                  <PackagePlus className="h-5 w-5 text-slate-600" />
+                  إنشاء طلب
+                </div>
+                {!adminCode && (
+                  <div className="mt-3 rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
+                    أدخل كود الإدارة لتمكين إنشاء الطلبات.
                   </div>
-                  <form onSubmit={createOrder} className="mt-5 grid gap-3 md:grid-cols-2">
-                    <input
-                      name="customer_name"
-                      className="h-11 rounded-lg border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-slate-400"
-                      placeholder="اسم العميل"
-                      required
-                    />
-                    <input
-                      name="receiver_name"
-                      className="h-11 rounded-lg border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-slate-400"
-                      placeholder="اسم المستلم"
-                      required
-                    />
-                    <input
-                      name="customer_location_text"
-                      className="h-11 rounded-lg border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-slate-400"
-                      placeholder="عنوان العميل"
-                      required
-                    />
-                    <input
-                      name="order_type"
-                      className="h-11 rounded-lg border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-slate-400"
-                      placeholder="نوع الطلب"
-                      required
-                    />
-                    <input
-                      name="price"
-                      type="number"
-                      step="0.01"
-                      className="h-11 rounded-lg border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-slate-400"
-                      placeholder="سعر الطلب"
-                    />
-                    <input
-                      name="delivery_fee"
-                      type="number"
-                      step="0.01"
-                      className="h-11 rounded-lg border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-slate-400"
-                      placeholder="رسوم التوصيل"
-                    />
-                    <select
-                      name="payout_method"
-                      className="h-11 rounded-lg border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-slate-400"
-                      defaultValue=""
-                      required
-                    >
-                      <option value="" disabled>
-                        اختر طريقة الدفع
-                      </option>
-                      <option value="card">بطاقة مصرفية</option>
-                      <option value="wallet">محفظة محلية</option>
-                      <option value="cash">نقداً</option>
-                      <option value="bank_transfer">حوالة مصرفية</option>
-                    </select>
-                    <input
-                      name="driver_code"
-                      className="h-11 rounded-lg border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-slate-400"
-                      placeholder="معرّف السائق (اختياري)"
-                    />
-                    <button className="h-11 rounded-lg bg-orange-500 text-sm font-semibold text-white transition hover:bg-orange-600 md:col-span-2">
-                      إنشاء الطلب
-                    </button>
-                  </form>
-                </section>
+                )}
+                <form onSubmit={createOrder} className="mt-5 grid gap-3 md:grid-cols-2">
+                  <input
+                    name="customer_name"
+                    className="h-11 rounded-lg border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-slate-400"
+                    placeholder="اسم العميل"
+                    required
+                  />
+                  <input
+                    name="receiver_name"
+                    className="h-11 rounded-lg border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-slate-400"
+                    placeholder="اسم المستلم"
+                    required
+                  />
+                  <input
+                    name="customer_location_text"
+                    className="h-11 rounded-lg border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-slate-400"
+                    placeholder="عنوان العميل"
+                    required
+                  />
+                  <input
+                    name="order_type"
+                    className="h-11 rounded-lg border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-slate-400"
+                    placeholder="نوع الطلب"
+                    required
+                  />
+                  <input
+                    name="price"
+                    type="number"
+                    step="0.01"
+                    className="h-11 rounded-lg border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-slate-400"
+                    placeholder="سعر الطلب"
+                  />
+                  <input
+                    name="delivery_fee"
+                    type="number"
+                    step="0.01"
+                    className="h-11 rounded-lg border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-slate-400"
+                    placeholder="رسوم التوصيل"
+                  />
+                  <select
+                    name="payout_method"
+                    className="h-11 rounded-lg border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-slate-400"
+                    defaultValue=""
+                    required
+                  >
+                    <option value="" disabled>
+                      اختر طريقة الدفع
+                    </option>
+                    <option value="card">بطاقة مصرفية</option>
+                    <option value="wallet">محفظة محلية</option>
+                    <option value="cash">نقداً</option>
+                    <option value="bank_transfer">حوالة مصرفية</option>
+                  </select>
+                  <input
+                    name="driver_code"
+                    className="h-11 rounded-lg border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-slate-400"
+                    placeholder="كود السائق (اختياري)"
+                  />
+                  <button
+                    disabled={!adminCode}
+                    className={`h-11 rounded-lg text-sm font-semibold text-white transition md:col-span-2 ${
+                      adminCode
+                        ? "bg-orange-500 hover:bg-orange-600"
+                        : "cursor-not-allowed bg-slate-300 text-slate-600"
+                    }`}
+                  >
+                    إنشاء الطلب
+                  </button>
+                </form>
+              </section>
+            )}
 
-                <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-                  <div className="flex items-center justify-between">
-                    <p className="text-lg font-semibold">قائمة الطلبات</p>
-                    <button
-                      type="button"
-                      onClick={() => refreshOrders(true)}
-                      className="inline-flex items-center gap-2 text-xs text-slate-500"
-                    >
-                      <RefreshCw className="h-4 w-4" />
-                      تحديث
-                    </button>
+            {activeSection === "orders" && (
+              <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+                <div className="flex items-center justify-between">
+                  <p className="text-lg font-semibold">قائمة الطلبات</p>
+                  <button
+                    type="button"
+                    onClick={() => refreshOrders(true)}
+                    className="inline-flex items-center gap-2 text-xs text-slate-500"
+                  >
+                    <RefreshCw className="h-4 w-4" />
+                    تحديث
+                  </button>
+                </div>
+                {!adminCode && !storeId && (
+                  <div className="mt-3 rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
+                    أدخل كود الإدارة أو اربط المتجر لعرض الجرد.
                   </div>
-                  <div className="mt-4 overflow-x-auto">
-                    <table className="w-full text-right text-sm">
-                      <thead className="text-xs text-slate-500">
-  <tr>
-    <th className="py-2">الرقم</th>
-    <th>العميل</th>
-    <th>النوع</th>
-    <th>الحالة</th>
-    <th className="text-left">الرسوم</th>
-  </tr>
-</thead>
-                      <tbody className="divide-y divide-slate-200">
-                        {orders.map((order) => (
-                          <tr
-                            key={order.id}
-                            className={`${
-                              flashIds.has(order.id)
-                                ? "bg-orange-50"
-                                : "bg-transparent"
-                            }`}
-                          >
-                            <td className="py-3 font-semibold text-slate-900">
-                              {order.id.slice(0, 8)}...
-                            </td>
-                            <td className="text-slate-700">
-                              {order.customer_name ?? "-"}
-                            </td>
-                            <td className="text-slate-700">
-                              {order.receiver_name ?? "-"}
-                            </td>
-                            <td className="text-slate-700">
-                              {order.order_type ?? "-"}
-                            </td>
-                            <td className="text-slate-500">
-                              {order.driver_id
-                                ? `${order.driver_id.slice(0, 8)}...`
-                                : "-"}
-                            </td>
-                            <td>
-                              <span
-                                className={`inline-flex items-center rounded-full border px-2 py-1 text-xs font-medium ${
-                                  statusStyles[order.status ?? ""] ??
-                                  "border-slate-200 bg-slate-100 text-slate-700"
-                                }`}
-                              >
-                                {formatStatus(order.status)}
-                              </span>
-                            </td>
-                            <td className="text-slate-700">
-                              {formatPayout(order.payout_method)}
-                            </td>
-                            <td className="text-left text-slate-700">
-                              {typeof order.delivery_fee === "number"
-                                ? order.delivery_fee.toFixed(2)
-                                : "-"}
-                            </td>
-                          </tr>
-                        ))}
-                        {orders.length == 0 && (
-                          <tr>
-                            <td colSpan={8} className="py-6 text-center text-slate-500">
-                              لا توجد طلبات حالياً.
-                            </td>
-                          </tr>
-                        )}
-                      </tbody>
-                    </table>
+                )}
+                <div className="mt-4 overflow-x-auto">
+                  <table className="w-full text-right text-sm">
+                    <thead className="text-xs text-slate-500">
+                      <tr>
+                        <th className="py-2">الرقم</th>
+                        <th>العميل</th>
+                        <th>المستلم</th>
+                        <th>النوع</th>
+                        <th>السائق</th>
+                        <th>الحالة</th>
+                        <th>الدفع</th>
+                        <th className="text-left">الرسوم</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-200">
+                      {sortedOrders.map((order) => (
+                        <tr
+                          key={order.id}
+                          className={`${
+                            flashIds.has(order.id) ? "bg-orange-50" : "bg-transparent"
+                          }`}
+                        >
+                          <td className="py-3 font-semibold text-slate-900">
+                            {order.id.slice(0, 8)}...
+                          </td>
+                          <td className="text-slate-700">
+                            {order.customer_name ?? "-"}
+                          </td>
+                          <td className="text-slate-700">
+                            {order.receiver_name ?? "-"}
+                          </td>
+                          <td className="text-slate-700">
+                            {order.order_type ?? "-"}
+                          </td>
+                          <td className="text-slate-500">
+                            {order.driver_id ? `${order.driver_id.slice(0, 8)}...` : "-"}
+                          </td>
+                          <td>
+                            <span
+                              className={`inline-flex items-center rounded-full border px-2 py-1 text-xs font-medium ${
+                                statusStyles[order.status ?? ""] ??
+                                "border-slate-200 bg-slate-100 text-slate-700"
+                              }`}
+                            >
+                              {formatStatus(order.status)}
+                            </span>
+                          </td>
+                          <td className="text-slate-700">
+                            {formatPayout(order.payout_method)}
+                          </td>
+                          <td className="text-left text-slate-700">
+                            {typeof order.delivery_fee === "number"
+                              ? order.delivery_fee.toFixed(2)
+                              : "-"}
+                          </td>
+                        </tr>
+                      ))}
+                      {sortedOrders.length == 0 && (
+                        <tr>
+                          <td colSpan={8} className="py-6 text-center text-slate-500">
+                            {adminCode || storeId ? "لا توجد طلبات حالياً." : "أدخل كود الإدارة أو اربط المتجر لعرض الطلبات."}
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </section>
+            )}
+
+            {activeSection === "inventory" && (
+              <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+                <div className="flex items-center gap-2 text-lg font-semibold">
+                  <ListOrdered className="h-5 w-5 text-slate-600" />
+                  الجرد
+                </div>
+                <div className="mt-4 grid gap-3 md:grid-cols-3">
+                  <input
+                    className="h-11 rounded-lg border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-slate-400"
+                    placeholder="بحث سريع"
+                    value={inventoryQuery}
+                    onChange={(e) => setInventoryQuery(e.target.value)}
+                  />
+                  <select
+                    className="h-11 rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-900"
+                    value={inventoryStatus}
+                    onChange={(e) => setInventoryStatus(e.target.value)}
+                  >
+                    <option value="all">كل الحالات</option>
+                    <option value="pending">قيد الانتظار</option>
+                    <option value="accepted">تم القبول</option>
+                    <option value="delivering">قيد التوصيل</option>
+                    <option value="delivered">تم التسليم</option>
+                    <option value="cancelled">ملغي</option>
+                  </select>
+                  <select
+                    className="h-11 rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-900"
+                    value={inventoryRange}
+                    onChange={(e) => setInventoryRange(e.target.value)}
+                  >
+                    <option value="7">آخر 7 أيام</option>
+                    <option value="30">آخر 30 يوم</option>
+                    <option value="90">آخر 90 يوم</option>
+                    <option value="all">كل الفترات</option>
+                  </select>
+                </div>
+                {!adminCode && !storeId && (
+                  <div className="mt-4 rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
+                    أدخل كود الإدارة أو اربط المتجر لعرض الجرد.
                   </div>
-                </section>
-              </div>
+                )}
+                <div className="mt-4 overflow-x-auto">
+                  <table className="w-full text-right text-sm">
+                    <thead className="text-xs text-slate-500">
+                      <tr>
+                        <th className="py-2">الرقم</th>
+                        <th>العميل</th>
+                        <th>النوع</th>
+                        <th>الحالة</th>
+                        <th>التاريخ</th>
+                        <th className="text-left">الرسوم</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-200">
+                      {inventoryOrders.map((order) => (
+                        <tr key={`${order.id}-inv`}>
+                          <td className="py-3 font-semibold text-slate-900">
+                            {order.id.slice(0, 8)}...
+                          </td>
+                          <td className="text-slate-700">
+                            {order.customer_name ?? "-"}
+                          </td>
+                          <td className="text-slate-700">
+                            {order.order_type ?? "-"}
+                          </td>
+                          <td>
+                            <span
+                              className={`inline-flex items-center rounded-full border px-2 py-1 text-xs font-medium ${
+                                statusStyles[order.status ?? ""] ??
+                                "border-slate-200 bg-slate-100 text-slate-700"
+                              }`}
+                            >
+                              {formatStatus(order.status)}
+                            </span>
+                          </td>
+                          <td className="text-slate-500">
+                            {formatDate(order.created_at)}
+                          </td>
+                          <td className="text-left text-slate-700">
+                            {typeof order.delivery_fee === "number"
+                              ? order.delivery_fee.toFixed(2)
+                              : "-"}
+                          </td>
+                        </tr>
+                      ))}
+                      {inventoryOrders.length == 0 && (
+                        <tr>
+                          <td colSpan={6} className="py-6 text-center text-slate-500">
+                            {adminCode || storeId ? "لا توجد بيانات." : "أدخل كود الإدارة أو اربط المتجر لعرض الجرد."}
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </section>
             )}
       </main>
 
