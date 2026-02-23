@@ -178,6 +178,9 @@ export default function StorePanel() {
   const [driverName, setDriverName] = useState("");
   const [driverPhone, setDriverPhone] = useState("");
   const [driverCode, setDriverCode] = useState<string | null>(null);
+  const [driverSearch, setDriverSearch] = useState("");
+  const [driverMatches, setDriverMatches] = useState<DriverRow[]>([]);
+  const [driverSearchLoading, setDriverSearchLoading] = useState(false);
   const [walletDriverId, setWalletDriverId] = useState("");
   const [walletAmount, setWalletAmount] = useState("");
   const [walletMethod, setWalletMethod] = useState("wallet");
@@ -236,6 +239,40 @@ export default function StorePanel() {
   useEffect(() => {
     setFinanceUnlocked(false);
   }, [adminCode]);
+
+  useEffect(() => {
+    let active = true;
+    const query = driverSearch.trim();
+
+    if (!adminCode || query.length < 2) {
+      setDriverMatches([]);
+      setDriverSearchLoading(false);
+      return;
+    }
+
+    setDriverSearchLoading(true);
+    const handle = window.setTimeout(async () => {
+      try {
+        const res = await fetch(
+          `${API_BASE}/drivers/search?admin_code=${encodeURIComponent(
+            adminCode
+          )}&query=${encodeURIComponent(query)}&online=1`
+        );
+        const data = (await res.json()) as ApiResponse;
+        if (!active) return;
+        setDriverMatches((data?.drivers ?? []) as DriverRow[]);
+      } catch {
+        if (active) setDriverMatches([]);
+      } finally {
+        if (active) setDriverSearchLoading(false);
+      }
+    }, 250);
+
+    return () => {
+      active = false;
+      window.clearTimeout(handle);
+    };
+  }, [driverSearch, adminCode]);
 
   const clearStore = () => {
     localStorage.removeItem("nova.store_id");
@@ -964,6 +1001,8 @@ export default function StorePanel() {
       const data = (await res.json()) as ApiResponse;
       if (data?.order?.id) {
         e.currentTarget.reset();
+        setDriverSearch("");
+        setDriverMatches([]);
         toast.success("تم إنشاء الطلب", { id: toastId });
       } else {
         toast.error(data?.error ?? "فشل إنشاء الطلب", { id: toastId });
@@ -1140,7 +1179,7 @@ export default function StorePanel() {
               </section>
             )}
 
-            {(activeSection === "settings" || activeSection === "drivers") && (
+            {activeSection === "settings" && (
               <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
                 <div className="flex items-center justify-between">
                   <div>
@@ -1151,7 +1190,7 @@ export default function StorePanel() {
                   </div>
                   <Settings className="h-5 w-5 text-slate-500" />
                 </div>
-                                <div className="mt-5 rounded-lg border border-slate-200 bg-slate-50 p-4">
+                <div className="mt-5 rounded-lg border border-slate-200 bg-slate-50 p-4">
                   <div className="flex items-center justify-between">
                     <p className="text-sm font-semibold text-slate-900">بيانات المتجر</p>
                     <button
@@ -1193,35 +1232,49 @@ export default function StorePanel() {
                     </div>
                   </div>
                 </div>
-<form onSubmit={createDriver} className="mt-5 grid gap-3 md:grid-cols-2">
-  <input
-    className="h-11 rounded-lg border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-slate-400"
-    placeholder="كود الإدارة"
-    value={adminCode}
-    onChange={(e) => setAdminCode(e.target.value)}
-    required
-  />
-  <input
-    className="h-11 rounded-lg border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-slate-400"
-    placeholder="اسم المستخدم"
-    value={driverName}
-    onChange={(e) => setDriverName(e.target.value)}
-    required
-  />
-  <input
-    className="h-11 rounded-lg border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-slate-400"
-    placeholder="رقم الهاتف"
-    value={driverPhone}
-    onChange={(e) => setDriverPhone(e.target.value)}
-    required
-  />
-  <button
-    type="submit"
-    className="h-11 rounded-lg bg-orange-500 text-sm font-semibold text-white transition hover:bg-orange-600 md:col-span-2"
-  >
-    توليد كود السائق
-  </button>
-</form>
+              </section>
+            )}
+
+            {activeSection === "drivers" && (
+              <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h2 className="text-lg font-semibold">السائقون</h2>
+                    <p className="mt-1 text-sm text-slate-500">
+                      إنشاء الحسابات وإدارة حالة المندوبين.
+                    </p>
+                  </div>
+                  <Users className="h-5 w-5 text-slate-500" />
+                </div>
+                <form onSubmit={createDriver} className="mt-5 grid gap-3 md:grid-cols-2">
+                  <input
+                    className="h-11 rounded-lg border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-slate-400"
+                    placeholder="كود الإدارة"
+                    value={adminCode}
+                    onChange={(e) => setAdminCode(e.target.value)}
+                    required
+                  />
+                  <input
+                    className="h-11 rounded-lg border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-slate-400"
+                    placeholder="اسم المستخدم"
+                    value={driverName}
+                    onChange={(e) => setDriverName(e.target.value)}
+                    required
+                  />
+                  <input
+                    className="h-11 rounded-lg border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-slate-400"
+                    placeholder="رقم الهاتف"
+                    value={driverPhone}
+                    onChange={(e) => setDriverPhone(e.target.value)}
+                    required
+                  />
+                  <button
+                    type="submit"
+                    className="h-11 rounded-lg bg-orange-500 text-sm font-semibold text-white transition hover:bg-orange-600 md:col-span-2"
+                  >
+                    توليد كود السائق
+                  </button>
+                </form>
 
                 {driverCode && (
                   <div className="mt-5 rounded-lg border border-slate-200 bg-slate-50 p-4">
@@ -1562,11 +1615,62 @@ export default function StorePanel() {
                     <option value="cash">نقداً</option>
                     <option value="bank_transfer">حوالة مصرفية</option>
                   </select>
-                  <input
-                    name="driver_code"
-                    className="h-11 rounded-lg border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-slate-400"
-                    placeholder="كود السائق (اختياري)"
-                  />
+                  <div className="relative md:col-span-2">
+                    <input
+                      name="driver_code"
+                      value={driverSearch}
+                      onChange={(e) => setDriverSearch(e.target.value)}
+                      className="h-11 w-full rounded-lg border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-slate-400"
+                      placeholder="ابحث عن مندوب (اسم / هاتف / كود) - اختياري"
+                    />
+                    {driverSearch && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setDriverSearch("");
+                          setDriverMatches([]);
+                        }}
+                        className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-slate-400"
+                      >
+                        مسح
+                      </button>
+                    )}
+                    {driverSearch.trim().length >= 2 && (
+                      <div className="absolute z-10 mt-2 max-h-56 w-full overflow-auto rounded-lg border border-slate-200 bg-white shadow-lg">
+                        {driverSearchLoading && (
+                          <div className="px-4 py-3 text-xs text-slate-500">
+                            جاري البحث عن المندوبين...
+                          </div>
+                        )}
+                        {!driverSearchLoading && driverMatches.length === 0 && (
+                          <div className="px-4 py-3 text-xs text-slate-500">
+                            لا يوجد مندوبون متصلون مطابقون للبحث.
+                          </div>
+                        )}
+                        {driverMatches.map((driver) => (
+                          <button
+                            key={driver.id}
+                            type="button"
+                            onClick={() => {
+                              setDriverSearch(driver.driver_code ?? "");
+                              setDriverMatches([]);
+                            }}
+                            className="flex w-full items-center justify-between px-4 py-3 text-right text-xs text-slate-700 hover:bg-slate-50"
+                          >
+                            <span className="font-semibold">
+                              {driver.name ?? "مندوب"}
+                            </span>
+                            <span className="text-slate-500">
+                              {driver.phone ?? "-"}
+                            </span>
+                            <span className="text-slate-400">
+                              {driver.driver_code ?? "-"}
+                            </span>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                   <button
                     disabled={!adminCode}
                     className={`h-11 rounded-lg text-sm font-semibold text-white transition md:col-span-2 ${
