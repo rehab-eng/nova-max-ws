@@ -66,6 +66,13 @@ type LedgerDriverRow = {
   delivery_total: number;
 };
 
+type SavedStore = {
+  id: string;
+  name: string | null;
+  admin_code: string;
+  store_code: string | null;
+};
+
 type ApiResponse = Record<string, any>;
 
 type SectionKey =
@@ -115,8 +122,8 @@ function formatStatus(value: string | null | undefined): string {
 
 const payoutLabels: Record<string, string> = {
   card: "بطاقة مصرفية",
-  wallet: "محفظة محلية",
-  cash: "نقداً",
+  wallet: "محفظة",
+  cash: "كاش",
   bank_transfer: "حوالة مصرفية",
 };
 
@@ -175,6 +182,7 @@ export default function StorePanel() {
   const [adminCode, setAdminCode] = useState("");
   const [storeName, setStoreName] = useState("");
   const [storeLabel, setStoreLabel] = useState<string | null>(null);
+  const [savedStores, setSavedStores] = useState<SavedStore[]>([]);
   const [driverName, setDriverName] = useState("");
   const [driverPhone, setDriverPhone] = useState("");
   const [driverCode, setDriverCode] = useState<string | null>(null);
@@ -210,6 +218,21 @@ export default function StorePanel() {
     setStoreCode(localStorage.getItem("nova.store_code") ?? "");
     setAdminCode(localStorage.getItem("nova.admin_code") ?? "");
   }, []);
+
+  useEffect(() => {
+    const raw = localStorage.getItem("nova.stores");
+    if (!raw) return;
+    try {
+      const parsed = JSON.parse(raw) as SavedStore[];
+      if (Array.isArray(parsed)) setSavedStores(parsed);
+    } catch {
+      // ignore parse errors
+    }
+  }, []);
+
+  useEffect(() => {
+    localStorage.setItem("nova.stores", JSON.stringify(savedStores));
+  }, [savedStores]);
 
   useEffect(() => {
     localStorage.setItem("nova.store_id", storeId);
@@ -288,6 +311,20 @@ export default function StorePanel() {
   const getAdminBiometricKey = () => {
     if (!adminCode.trim()) return null;
     return `nova.admin.webauthn.${adminCode.trim()}`;
+  };
+
+  const upsertSavedStore = (store: SavedStore) => {
+    setSavedStores((prev) => {
+      const next = prev.filter((item) => item.id !== store.id);
+      return [store, ...next].slice(0, 12);
+    });
+  };
+
+  const selectSavedStore = (store: SavedStore) => {
+    setStoreId(store.id);
+    setStoreLabel(store.name ?? null);
+    setStoreCode(store.store_code ?? "");
+    setAdminCode(store.admin_code ?? "");
   };
 
   const ensureFinanceAccess = async () => {
@@ -393,6 +430,13 @@ export default function StorePanel() {
         setStoreId(data.store.id);
         setStoreLabel(data.store.name ?? null);
         setStoreCode(data.store.store_code ?? "");
+        if (data.store.admin_code) setAdminCode(data.store.admin_code);
+        upsertSavedStore({
+          id: data.store.id,
+          name: data.store.name ?? null,
+          admin_code: data.store.admin_code ?? adminCode,
+          store_code: data.store.store_code ?? null,
+        });
         if (toastId) toast.success("تم ربط المتجر", { id: toastId });
       } else if (toastId) {
         toast.error(data?.error ?? "تعذر ربط المتجر", { id: toastId });
@@ -770,6 +814,12 @@ export default function StorePanel() {
         setStoreCode(data.store.store_code ?? "");
         setAdminCode(data.store.admin_code ?? "");
         setStoreLabel(data.store.name ?? null);
+        upsertSavedStore({
+          id: data.store.id,
+          name: data.store.name ?? null,
+          admin_code: data.store.admin_code ?? "",
+          store_code: data.store.store_code ?? null,
+        });
         toast.success("تم إنشاء المتجر", { id: toastId });
       } else {
         toast.error(data?.error ?? "فشل إنشاء المتجر", { id: toastId });
@@ -961,6 +1011,37 @@ export default function StorePanel() {
         fetchDrivers();
       } else {
         toast.error(data?.error ?? "فشل تحديث السائق", { id: toastId });
+      }
+    } catch {
+      toast.error("خطأ في الشبكة", { id: toastId });
+    }
+  };
+
+  const reopenOrder = async (orderId: string) => {
+    if (!adminCode) {
+      toast.error("رمز الإدارة مطلوب");
+      return;
+    }
+    const confirmed = window.confirm("سيتم إعادة الطلب إلى حالة الانتظار. هل تريد المتابعة؟");
+    if (!confirmed) return;
+
+    const toastId = toast.loading("جاري إعادة تفعيل الطلب...");
+    try {
+      const res = await fetch(`${API_BASE}/orders/${orderId}/status`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json", "X-Admin-Code": adminCode },
+        body: JSON.stringify({
+          admin_code: adminCode,
+          store_id: storeId || undefined,
+          status: "pending",
+        }),
+      });
+      const data = (await res.json()) as ApiResponse;
+      if (data?.ok) {
+        toast.success("تمت إعادة الطلب", { id: toastId });
+        refreshOrders(true);
+      } else {
+        toast.error(data?.error ?? "تعذر إعادة الطلب", { id: toastId });
       }
     } catch {
       toast.error("خطأ في الشبكة", { id: toastId });
@@ -1202,6 +1283,34 @@ export default function StorePanel() {
                       ربط المتجر
                     </button>
                   </div>
+                  {savedStores.length > 0 && (
+                    <div className="mt-4 grid gap-2 md:grid-cols-2">
+                      <p className="text-xs text-slate-500 md:col-span-2">
+                        اختر متجرًا محفوظًا بدل إدخال كود الإدارة
+                      </p>
+                      <select
+                        value={storeId}
+                        onChange={(e) => {
+                          const selected = savedStores.find(
+                            (item) => item.id === e.target.value
+                          );
+                          if (selected) {
+                            selectSavedStore(selected);
+                            refreshOrders(true);
+                            fetchDrivers();
+                          }
+                        }}
+                        className="h-11 rounded-lg border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-slate-400 md:col-span-2"
+                      >
+                        <option value="">اختر متجرًا</option>
+                        {savedStores.map((store) => (
+                          <option key={store.id} value={store.id}>
+                            {store.name ?? "متجر"} • {store.store_code ?? "-"}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
                   <form onSubmit={createStore} className="mt-4 grid gap-3 md:grid-cols-2">
                     <input
                       className="h-11 rounded-lg border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-slate-400"
@@ -1247,13 +1356,15 @@ export default function StorePanel() {
                   <Users className="h-5 w-5 text-slate-500" />
                 </div>
                 <form onSubmit={createDriver} className="mt-5 grid gap-3 md:grid-cols-2">
-                  <input
-                    className="h-11 rounded-lg border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-slate-400"
-                    placeholder="كود الإدارة"
-                    value={adminCode}
-                    onChange={(e) => setAdminCode(e.target.value)}
-                    required
-                  />
+                  <div className="md:col-span-2 rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700">
+                    المتجر المختار:{" "}
+                    <span className="font-semibold">
+                      {storeLabel ?? "غير محدد"}
+                    </span>
+                    <span className="ml-2 text-xs text-slate-500">
+                      {storeCode ? `(${storeCode})` : ""}
+                    </span>
+                  </div>
                   <input
                     className="h-11 rounded-lg border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-slate-400"
                     placeholder="اسم المستخدم"
@@ -1559,7 +1670,7 @@ export default function StorePanel() {
                 </div>
                 {!adminCode && (
                   <div className="mt-3 rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
-                    أدخل كود الإدارة لتمكين إنشاء الطلبات.
+                    اختر متجرًا من الإعدادات أو أدخل كود الإدارة لتمكين إنشاء الطلبات.
                   </div>
                 )}
                 <form onSubmit={createOrder} className="mt-5 grid gap-3 md:grid-cols-2">
@@ -1610,10 +1721,8 @@ export default function StorePanel() {
                     <option value="" disabled>
                       اختر طريقة الدفع
                     </option>
-                    <option value="card">بطاقة مصرفية</option>
-                    <option value="wallet">محفظة محلية</option>
-                    <option value="cash">نقداً</option>
-                    <option value="bank_transfer">حوالة مصرفية</option>
+                    <option value="wallet">محفظة</option>
+                    <option value="cash">كاش</option>
                   </select>
                   <div className="relative md:col-span-2">
                     <input
@@ -1700,7 +1809,7 @@ export default function StorePanel() {
                 </div>
                 {!adminCode && !storeId && (
                   <div className="mt-3 rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
-                    أدخل كود الإدارة أو اربط المتجر لعرض الجرد.
+                    اختر متجرًا من الإعدادات أو اربط المتجر لعرض الجرد.
                   </div>
                 )}
                 <div className="mt-4 overflow-x-auto">
@@ -1715,6 +1824,7 @@ export default function StorePanel() {
                         <th>الحالة</th>
                         <th>الدفع</th>
                         <th className="text-left">الرسوم</th>
+                        <th className="text-left">إجراء</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-200">
@@ -1758,12 +1868,25 @@ export default function StorePanel() {
                               ? order.delivery_fee.toFixed(2)
                               : "-"}
                           </td>
+                          <td className="text-left">
+                            {order.status === "cancelled" && (
+                              <button
+                                type="button"
+                                onClick={() => reopenOrder(order.id)}
+                                className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:border-slate-400"
+                              >
+                                إعادة
+                              </button>
+                            )}
+                          </td>
                         </tr>
                       ))}
                       {sortedOrders.length == 0 && (
                         <tr>
-                          <td colSpan={8} className="py-6 text-center text-slate-500">
-                            {adminCode || storeId ? "لا توجد طلبات حالياً." : "أدخل كود الإدارة أو اربط المتجر لعرض الطلبات."}
+                          <td colSpan={9} className="py-6 text-center text-slate-500">
+                            {adminCode || storeId
+                              ? "لا توجد طلبات حالياً."
+                              : "اختر متجرًا من الإعدادات أو اربط المتجر لعرض الطلبات."}
                           </td>
                         </tr>
                       )}
