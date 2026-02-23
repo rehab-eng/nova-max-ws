@@ -183,12 +183,11 @@ export default function StorePanel() {
   const [storeName, setStoreName] = useState("");
   const [storeLabel, setStoreLabel] = useState<string | null>(null);
   const [savedStores, setSavedStores] = useState<SavedStore[]>([]);
+  const [orderStoreId, setOrderStoreId] = useState("");
+  const [orderAdminCode, setOrderAdminCode] = useState("");
   const [driverName, setDriverName] = useState("");
   const [driverPhone, setDriverPhone] = useState("");
   const [driverCode, setDriverCode] = useState<string | null>(null);
-  const [driverSearch, setDriverSearch] = useState("");
-  const [driverMatches, setDriverMatches] = useState<DriverRow[]>([]);
-  const [driverSearchLoading, setDriverSearchLoading] = useState(false);
   const [walletDriverId, setWalletDriverId] = useState("");
   const [walletAmount, setWalletAmount] = useState("");
   const [walletMethod, setWalletMethod] = useState("wallet");
@@ -230,6 +229,30 @@ export default function StorePanel() {
     }
   }, []);
 
+  const availableStores = useMemo(() => {
+    const list = [...savedStores];
+    if (storeId && adminCode) {
+      const current: SavedStore = {
+        id: storeId,
+        name: storeLabel ?? null,
+        admin_code: adminCode,
+        store_code: storeCode || null,
+      };
+      const idx = list.findIndex((item) => item.id === storeId);
+      if (idx >= 0) {
+        list[idx] = { ...list[idx], ...current };
+      } else {
+        list.unshift(current);
+      }
+    }
+    return list;
+  }, [savedStores, storeId, adminCode, storeLabel, storeCode]);
+
+  const selectedOrderStore = useMemo(
+    () => availableStores.find((store) => store.id === orderStoreId) ?? null,
+    [availableStores, orderStoreId]
+  );
+
   useEffect(() => {
     localStorage.setItem("nova.stores", JSON.stringify(savedStores));
   }, [savedStores]);
@@ -245,6 +268,19 @@ export default function StorePanel() {
   useEffect(() => {
     localStorage.setItem("nova.admin_code", adminCode);
   }, [adminCode]);
+
+  useEffect(() => {
+    if (orderStoreId) return;
+    if (storeId && adminCode) {
+      setOrderStoreId(storeId);
+      setOrderAdminCode(adminCode);
+      return;
+    }
+    if (availableStores.length) {
+      setOrderStoreId(availableStores[0].id);
+      setOrderAdminCode(availableStores[0].admin_code ?? "");
+    }
+  }, [orderStoreId, storeId, adminCode, availableStores]);
 
   useEffect(() => {
     setBiometricSupported(canUseWebAuthn());
@@ -263,40 +299,6 @@ export default function StorePanel() {
     setFinanceUnlocked(false);
   }, [adminCode]);
 
-  useEffect(() => {
-    let active = true;
-    const query = driverSearch.trim();
-
-    if (!adminCode || query.length < 2) {
-      setDriverMatches([]);
-      setDriverSearchLoading(false);
-      return;
-    }
-
-    setDriverSearchLoading(true);
-    const handle = window.setTimeout(async () => {
-      try {
-        const res = await fetch(
-          `${API_BASE}/drivers/search?admin_code=${encodeURIComponent(
-            adminCode
-          )}&query=${encodeURIComponent(query)}&online=1`
-        );
-        const data = (await res.json()) as ApiResponse;
-        if (!active) return;
-        setDriverMatches((data?.drivers ?? []) as DriverRow[]);
-      } catch {
-        if (active) setDriverMatches([]);
-      } finally {
-        if (active) setDriverSearchLoading(false);
-      }
-    }, 250);
-
-    return () => {
-      active = false;
-      window.clearTimeout(handle);
-    };
-  }, [driverSearch, adminCode]);
-
   const clearStore = () => {
     localStorage.removeItem("nova.store_id");
     localStorage.removeItem("nova.store_code");
@@ -305,6 +307,8 @@ export default function StorePanel() {
     setStoreCode("");
     setAdminCode("");
     setStoreLabel(null);
+    setOrderStoreId("");
+    setOrderAdminCode("");
     setFinanceUnlocked(false);
   };
 
@@ -325,6 +329,8 @@ export default function StorePanel() {
     setStoreLabel(store.name ?? null);
     setStoreCode(store.store_code ?? "");
     setAdminCode(store.admin_code ?? "");
+    setOrderStoreId(store.id);
+    setOrderAdminCode(store.admin_code ?? "");
   };
 
   const ensureFinanceAccess = async () => {
@@ -431,6 +437,8 @@ export default function StorePanel() {
         setStoreLabel(data.store.name ?? null);
         setStoreCode(data.store.store_code ?? "");
         if (data.store.admin_code) setAdminCode(data.store.admin_code);
+        setOrderStoreId(data.store.id);
+        setOrderAdminCode(data.store.admin_code ?? adminCode);
         upsertSavedStore({
           id: data.store.id,
           name: data.store.name ?? null,
@@ -730,6 +738,8 @@ export default function StorePanel() {
     return { total, pending, delivering, delivered };
   }, [orders]);
 
+  const canCreateOrder = Boolean(orderAdminCode || adminCode);
+
   const sortedOrders = useMemo(() => {
     return [...orders].sort((a, b) => {
       const ta = a.created_at ? new Date(a.created_at).getTime() : 0;
@@ -814,6 +824,8 @@ export default function StorePanel() {
         setStoreCode(data.store.store_code ?? "");
         setAdminCode(data.store.admin_code ?? "");
         setStoreLabel(data.store.name ?? null);
+        setOrderStoreId(data.store.id);
+        setOrderAdminCode(data.store.admin_code ?? "");
         upsertSavedStore({
           id: data.store.id,
           name: data.store.name ?? null,
@@ -1050,7 +1062,8 @@ export default function StorePanel() {
 
   const createOrder = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (!adminCode) {
+    const adminForOrder = orderAdminCode || adminCode;
+    if (!adminForOrder) {
       toast.error("رمز الإدارة مطلوب");
       return;
     }
@@ -1058,7 +1071,7 @@ export default function StorePanel() {
 
     const formData = new FormData(e.currentTarget);
     const payload: Record<string, unknown> = {
-      admin_code: adminCode,
+      admin_code: adminForOrder,
       customer_name: formData.get("customer_name"),
       customer_location_text: formData.get("customer_location_text"),
       order_type: formData.get("order_type"),
@@ -1070,7 +1083,8 @@ export default function StorePanel() {
     const driverCode = String(formData.get("driver_code") ?? "").trim();
     if (driverCode) payload.driver_code = driverCode;
 
-    if (storeId) payload.store_id = storeId;
+    const storeForOrder = orderStoreId || storeId;
+    if (storeForOrder) payload.store_id = storeForOrder;
 
     try {
       const res = await fetch(`${API_BASE}/orders`, {
@@ -1082,8 +1096,6 @@ export default function StorePanel() {
       const data = (await res.json()) as ApiResponse;
       if (data?.order?.id) {
         e.currentTarget.reset();
-        setDriverSearch("");
-        setDriverMatches([]);
         toast.success("تم إنشاء الطلب", { id: toastId });
       } else {
         toast.error(data?.error ?? "فشل إنشاء الطلب", { id: toastId });
@@ -1683,12 +1695,44 @@ export default function StorePanel() {
                   <PackagePlus className="h-5 w-5 text-slate-600" />
                   إنشاء طلب
                 </div>
-                {!adminCode && (
+                {!canCreateOrder && (
                   <div className="mt-3 rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
-                    اختر متجرًا من الإعدادات أو أدخل كود الإدارة لتمكين إنشاء الطلبات.
+                    اختر متجرًا من الإعدادات أو اربط متجرًا صالحًا لإنشاء الطلبات.
                   </div>
                 )}
                 <form onSubmit={createOrder} className="mt-5 grid gap-3 md:grid-cols-2">
+                  {availableStores.length > 0 ? (
+                    <div className="md:col-span-2">
+                      <label className="mb-1 block text-xs font-semibold text-slate-500">
+                        المتجر المطلوب للطلب
+                      </label>
+                      <select
+                        className="h-11 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-900"
+                        value={orderStoreId}
+                        onChange={(e) => {
+                          const nextId = e.target.value;
+                          setOrderStoreId(nextId);
+                          const match = availableStores.find((store) => store.id === nextId);
+                          setOrderAdminCode(match?.admin_code ?? adminCode);
+                        }}
+                      >
+                        {availableStores.map((store) => (
+                          <option key={store.id} value={store.id}>
+                            {store.name ?? store.id.slice(0, 6)}
+                          </option>
+                        ))}
+                      </select>
+                      {selectedOrderStore && (
+                        <p className="mt-1 text-xs text-slate-500">
+                          كود المتجر: {selectedOrderStore.store_code ?? "-"}
+                        </p>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="md:col-span-2 rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
+                      لا توجد متاجر محفوظة بعد. اذهب إلى الإعدادات لربط المتجر.
+                    </div>
+                  )}
                   <input
                     name="customer_name"
                     className="h-11 rounded-lg border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-slate-400"
@@ -1739,66 +1783,15 @@ export default function StorePanel() {
                     <option value="wallet">محفظة</option>
                     <option value="cash">كاش</option>
                   </select>
-                  <div className="relative md:col-span-2">
-                    <input
-                      name="driver_code"
-                      value={driverSearch}
-                      onChange={(e) => setDriverSearch(e.target.value)}
-                      className="h-11 w-full rounded-lg border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-slate-400"
-                      placeholder="ابحث عن مندوب (اسم / هاتف / كود) - اختياري"
-                    />
-                    {driverSearch && (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setDriverSearch("");
-                          setDriverMatches([]);
-                        }}
-                        className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-slate-400"
-                      >
-                        مسح
-                      </button>
-                    )}
-                    {driverSearch.trim().length >= 2 && (
-                      <div className="absolute z-10 mt-2 max-h-56 w-full overflow-auto rounded-lg border border-slate-200 bg-white shadow-lg">
-                        {driverSearchLoading && (
-                          <div className="px-4 py-3 text-xs text-slate-500">
-                            جاري البحث عن المندوبين...
-                          </div>
-                        )}
-                        {!driverSearchLoading && driverMatches.length === 0 && (
-                          <div className="px-4 py-3 text-xs text-slate-500">
-                            لا يوجد مندوبون متصلون مطابقون للبحث.
-                          </div>
-                        )}
-                        {driverMatches.map((driver) => (
-                          <button
-                            key={driver.id}
-                            type="button"
-                            onClick={() => {
-                              setDriverSearch(driver.driver_code ?? "");
-                              setDriverMatches([]);
-                            }}
-                            className="flex w-full items-center justify-between px-4 py-3 text-right text-xs text-slate-700 hover:bg-slate-50"
-                          >
-                            <span className="font-semibold">
-                              {driver.name ?? "مندوب"}
-                            </span>
-                            <span className="text-slate-500">
-                              {driver.phone ?? "-"}
-                            </span>
-                            <span className="text-slate-400">
-                              {driver.driver_code ?? "-"}
-                            </span>
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                  </div>
+                  <input
+                    name="driver_code"
+                    className="h-11 rounded-lg border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-slate-400 md:col-span-2"
+                    placeholder="كود السائق (اختياري - اتركه فارغًا للتوزيع على الكل)"
+                  />
                   <button
-                    disabled={!adminCode}
+                    disabled={!canCreateOrder}
                     className={`h-11 rounded-lg text-sm font-semibold text-white transition md:col-span-2 ${
-                      adminCode
+                      canCreateOrder
                         ? "bg-orange-500 hover:bg-orange-600"
                         : "cursor-not-allowed bg-slate-300 text-slate-600"
                     }`}
