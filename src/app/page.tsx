@@ -312,6 +312,46 @@ export default function StorePanel() {
     setFinanceUnlocked(false);
   };
 
+  const deleteStore = async () => {
+    if (!adminCode) {
+      toast.error("رمز الإدارة مطلوب");
+      return;
+    }
+    const storeKey = storeId || storeCode;
+    if (!storeKey) {
+      toast.error("اختر متجرًا أولاً");
+      return;
+    }
+    const confirmed = window.confirm(
+      "سيتم حذف المتجر وجميع الطلبات والسائقين المرتبطين به. هل تريد المتابعة؟"
+    );
+    if (!confirmed) return;
+
+    const toastId = toast.loading("جاري حذف المتجر...");
+    try {
+      const res = await fetch(
+        `${API_BASE}/stores/${encodeURIComponent(storeKey)}?purge=1`,
+        {
+          method: "DELETE",
+          headers: { "Content-Type": "application/json", "X-Admin-Code": adminCode },
+          body: JSON.stringify({ admin_code: adminCode, purge: true }),
+        }
+      );
+      const data = (await res.json()) as ApiResponse;
+      if (data?.ok) {
+        toast.success("تم حذف المتجر", { id: toastId });
+        setSavedStores((prev) =>
+          prev.filter((item) => item.id !== storeId && item.store_code !== storeCode)
+        );
+        clearStore();
+      } else {
+        toast.error(data?.error ?? "تعذر حذف المتجر", { id: toastId });
+      }
+    } catch {
+      toast.error("خطأ في الشبكة", { id: toastId });
+    }
+  };
+
   const getAdminBiometricKey = () => {
     if (!adminCode.trim()) return null;
     return `nova.admin.webauthn.${adminCode.trim()}`;
@@ -1366,6 +1406,24 @@ export default function StorePanel() {
                       <p className="text-slate-500">كود الإدارة</p>
                       <p className="mt-1 font-semibold text-slate-900">{adminCode || "-"}</p>
                     </div>
+                  </div>
+                  <div className="mt-4 rounded-lg border border-rose-200 bg-rose-50 p-4 text-xs text-rose-700">
+                    <p className="font-semibold">حذف المتجر</p>
+                    <p className="mt-1">
+                      هذا الإجراء سيحذف المتجر وجميع الطلبات والسائقين المرتبطين به.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={deleteStore}
+                      disabled={!adminCode}
+                      className={`mt-3 inline-flex h-10 items-center rounded-lg px-4 text-xs font-semibold transition ${
+                        adminCode
+                          ? "bg-rose-600 text-white hover:bg-rose-700"
+                          : "cursor-not-allowed bg-rose-200 text-rose-400"
+                      }`}
+                    >
+                      حذف المتجر
+                    </button>
                   </div>
                 </div>
               </section>
