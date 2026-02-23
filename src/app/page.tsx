@@ -1165,7 +1165,7 @@ export default function StorePanel() {
           <div className="flex items-center gap-4">
             <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-white">
               <img
-                src="/nova-logo.svg"
+                src="/logo.webp"
                 alt="Nova"
                 className="h-14 w-14 rounded-2xl border border-slate-200 bg-white"
               />
@@ -2098,6 +2098,7 @@ export default function StorePanel() {
   </div>
   );
 }
+
 
 
 
