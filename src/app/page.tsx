@@ -1164,7 +1164,11 @@ export default function StorePanel() {
         <header className="flex flex-col gap-6 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm md:flex-row md:items-center md:justify-between">
           <div className="flex items-center gap-4">
             <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-white">
-              <div className="flex h-14 w-14 items-center justify-center rounded-2xl border border-slate-200 bg-white text-[11px] font-semibold tracking-[0.2em] text-slate-500">NOVA</div>
+              <img
+                src="/nova-logo.svg"
+                alt="Nova"
+                className="h-14 w-14 rounded-2xl border border-slate-200 bg-white"
+              />
             </div>
             <div>
               <p className="text-xs tracking-[0.25em] text-slate-500">
