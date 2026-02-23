@@ -1283,6 +1283,21 @@ export default function StorePanel() {
                       ربط المتجر
                     </button>
                   </div>
+                  <div className="mt-4 grid gap-3 md:grid-cols-3">
+                    <input
+                      className="h-11 rounded-lg border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-slate-400 md:col-span-2"
+                      placeholder="أدخل كود الإدارة لربط متجر موجود"
+                      value={adminCode}
+                      onChange={(e) => setAdminCode(e.target.value)}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => resolveStore(false)}
+                      className="h-11 rounded-lg bg-slate-900 text-sm font-semibold text-white transition hover:bg-slate-800"
+                    >
+                      ربط المتجر
+                    </button>
+                  </div>
                   {savedStores.length > 0 && (
                     <div className="mt-4 grid gap-2 md:grid-cols-2">
                       <p className="text-xs text-slate-500 md:col-span-2">
