@@ -139,6 +139,15 @@ function formatDate(value?: string | null): string {
   return date.toLocaleDateString("ar", { day: "2-digit", month: "short" });
 }
 
+function formatOrderNumber(id: string): string {
+  const clean = id.replace(/-/g, "");
+  if (!clean) return "-";
+  const tail = clean.slice(-8);
+  const numeric = Number.parseInt(tail, 16);
+  if (Number.isNaN(numeric)) return clean.slice(0, 6).toUpperCase();
+  return String(numeric % 1_000_000).padStart(6, "0");
+}
+
 const canUseWebAuthn = () =>
   typeof window !== "undefined" &&
   window.isSecureContext &&
@@ -530,7 +539,7 @@ export default function StorePanel() {
       for (const order of nextOrders) {
         const previous = prevMap.get(order.id);
         if (!previous) {
-          toast.success(`طلب جديد ${order.id.slice(0, 6)}...`);
+          toast.success(`طلب جديد #${formatOrderNumber(order.id)}`);
           flashOrder(order.id);
         } else if (previous.status !== order.status) {
           toast.custom(
@@ -543,7 +552,7 @@ export default function StorePanel() {
                 <div className="flex items-center gap-2 text-slate-900">
                   <PackagePlus className="h-4 w-4 text-slate-600" />
                   <span>
-                    حالة الطلب {order.id.slice(0, 6)}... أصبحت{" "}
+                    حالة الطلب #{formatOrderNumber(order.id)} أصبحت{" "}
                     {formatStatus(order.status)}
                   </span>
                 </div>
@@ -1276,8 +1285,11 @@ export default function StorePanel() {
                       <tbody className="divide-y divide-slate-200">
                         {recentOrders.map((order) => (
                           <tr key={order.id}>
-                            <td className="py-3 font-semibold text-slate-900">
-                              {order.id.slice(0, 8)}...
+                            <td
+                              className="py-3 font-semibold text-slate-900"
+                              title={order.id}
+                            >
+                              #{formatOrderNumber(order.id)}
                             </td>
                             <td className="text-slate-700">
                               {order.customer_name ?? "-"}
@@ -1905,8 +1917,11 @@ export default function StorePanel() {
                             flashIds.has(order.id) ? "bg-orange-50" : "bg-transparent"
                           }`}
                         >
-                          <td className="py-3 font-semibold text-slate-900">
-                            {order.id.slice(0, 8)}...
+                          <td
+                            className="py-3 font-semibold text-slate-900"
+                            title={order.id}
+                          >
+                            #{formatOrderNumber(order.id)}
                           </td>
                           <td className="text-slate-700">
                             {order.customer_name ?? "-"}
@@ -2022,8 +2037,11 @@ export default function StorePanel() {
                     <tbody className="divide-y divide-slate-200">
                       {inventoryOrders.map((order) => (
                         <tr key={`${order.id}-inv`}>
-                          <td className="py-3 font-semibold text-slate-900">
-                            {order.id.slice(0, 8)}...
+                          <td
+                            className="py-3 font-semibold text-slate-900"
+                            title={order.id}
+                          >
+                            #{formatOrderNumber(order.id)}
                           </td>
                           <td className="text-slate-700">
                             {order.customer_name ?? "-"}
