@@ -1355,6 +1355,14 @@ export default function StorePanel() {
                   <Settings className="h-5 w-5 text-slate-500" />
                 </div>
                 <div className="mt-5 rounded-lg border border-slate-200 bg-slate-50 p-4">
+                  <div className="mb-4 rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-800">
+                    <p className="font-semibold">خطوات الحذف (واضحة وسريعة)</p>
+                    <ol className="mt-2 list-decimal space-y-1 pr-4">
+                      <li>أدخل كود الإدارة واضغط ربط المتجر.</li>
+                      <li>تأكد أن اسم المتجر وكود المتجر ظهروا.</li>
+                      <li>اضغط زر حذف المتجر أسفل.</li>
+                    </ol>
+                  </div>
                   <div className="flex items-center justify-between">
                     <p className="text-sm font-semibold text-slate-900">بيانات المتجر</p>
                     <button
@@ -1438,23 +1446,28 @@ export default function StorePanel() {
                       <p className="mt-1 font-semibold text-slate-900">{adminCode || "-"}</p>
                     </div>
                   </div>
-                  <div className="mt-4 rounded-lg border border-rose-200 bg-rose-50 p-4 text-xs text-rose-700">
-                    <p className="font-semibold">حذف المتجر</p>
+                  <div className="mt-4 rounded-lg border border-rose-200 bg-rose-50 p-4 text-sm text-rose-800">
+                    <p className="font-semibold">حذف المتجر (نهائي)</p>
                     <p className="mt-1">
-                      هذا الإجراء سيحذف المتجر وجميع الطلبات والسائقين المرتبطين به.
+                      سيتم حذف المتجر وجميع الطلبات والسائقين المرتبطين به.
                     </p>
                     <button
                       type="button"
                       onClick={deleteStore}
-                      disabled={!adminCode}
-                      className={`mt-3 inline-flex h-10 items-center rounded-lg px-4 text-xs font-semibold transition ${
-                        adminCode
+                      disabled={!adminCode || !storeId}
+                      className={`mt-3 inline-flex h-11 items-center rounded-lg px-5 text-sm font-semibold transition ${
+                        adminCode && storeId
                           ? "bg-rose-600 text-white hover:bg-rose-700"
                           : "cursor-not-allowed bg-rose-200 text-rose-400"
                       }`}
                     >
-                      حذف المتجر
+                      حذف المتجر الآن
                     </button>
+                    {!storeId && (
+                      <p className="mt-2 text-xs text-rose-700">
+                        يجب ربط المتجر أولاً ليظهر زر الحذف.
+                      </p>
+                    )}
                   </div>
                 </div>
               </section>
