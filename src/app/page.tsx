@@ -789,6 +789,22 @@ export default function StorePanel() {
 
   const canCreateOrder = Boolean(orderAdminCode || adminCode);
 
+  const driverCodeMap = useMemo(() => {
+    const map = new Map<string, string>();
+    drivers.forEach((driver) => {
+      const code = driver.driver_code ?? driver.secret_code;
+      if (driver.id && code) map.set(driver.id, code);
+    });
+    return map;
+  }, [drivers]);
+
+  const formatDriverDisplay = (id?: string | null) => {
+    if (!id) return "-";
+    const code = driverCodeMap.get(id);
+    if (code) return `#${code}`;
+    return `#${formatOrderNumber(id)}`;
+  };
+
   const sortedOrders = useMemo(() => {
     return [...orders].sort((a, b) => {
       const ta = a.created_at ? new Date(a.created_at).getTime() : 0;
@@ -1746,7 +1762,7 @@ export default function StorePanel() {
                               key={`driver-${row.driver_id}-${row.period}`}
                               className="mt-2 flex items-center justify-between text-xs"
                             >
-                              <span>{row.driver_name ?? row.driver_id.slice(0, 6)}</span>
+                              <span>{row.driver_name ?? formatDriverDisplay(row.driver_id)}</span>
                               <span className="font-semibold">
                                 {Number(row.delivery_total || 0).toFixed(2)}
                               </span>
@@ -1932,8 +1948,8 @@ export default function StorePanel() {
                           <td className="text-slate-700">
                             {order.order_type ?? "-"}
                           </td>
-                          <td className="text-slate-500">
-                            {order.driver_id ? `${order.driver_id.slice(0, 8)}...` : "-"}
+                          <td className="text-slate-500" title={order.driver_id ?? undefined}>
+                            {formatDriverDisplay(order.driver_id)}
                           </td>
                           <td>
                             <span
