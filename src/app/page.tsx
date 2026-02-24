@@ -924,7 +924,6 @@ export default function StorePanel() {
         name: driverName,
         phone: driverPhone,
       };
-      if (storeId) payload.store_id = storeId;
 
       const res = await fetch(`${API_BASE}/drivers`, {
         method: "POST",
@@ -1467,21 +1466,12 @@ export default function StorePanel() {
                   <div>
                     <h2 className="text-lg font-semibold">السائقون</h2>
                     <p className="mt-1 text-sm text-slate-500">
-                      إنشاء الحسابات وإدارة حالة المندوبين.
+                      إنشاء الحسابات وإدارة حالة المندوبين (الحساب عام ويعمل مع أي متجر).
                     </p>
                   </div>
                   <Users className="h-5 w-5 text-slate-500" />
                 </div>
                 <form onSubmit={createDriver} className="mt-5 grid gap-3 md:grid-cols-2">
-                  <div className="md:col-span-2 rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700">
-                    المتجر المختار:{" "}
-                    <span className="font-semibold">
-                      {storeLabel ?? "غير محدد"}
-                    </span>
-                    <span className="ml-2 text-xs text-slate-500">
-                      {storeCode ? `(${storeCode})` : ""}
-                    </span>
-                  </div>
                   <input
                     className="h-11 rounded-lg border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-slate-400"
                     placeholder="اسم المستخدم"
