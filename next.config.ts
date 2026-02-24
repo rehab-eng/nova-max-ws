@@ -1,4 +1,5 @@
 ﻿import type { NextConfig } from "next";
+import { withSentryConfig } from "@sentry/nextjs";
 
 const nextConfig: NextConfig = {
   reactCompiler: true,
@@ -6,4 +7,4 @@ const nextConfig: NextConfig = {
   images: { unoptimized: true },
 };
 
-export default nextConfig;
+export default withSentryConfig(nextConfig);
