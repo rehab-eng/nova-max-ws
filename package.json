@@ -10,6 +10,7 @@
     "deploy": "npx wrangler pages deploy ./out"
   },
   "dependencies": {
+    "@fontsource/ibm-plex-sans-arabic": "^5.2.8",
     "@heroicons/react": "^2.2.0",
     "@sentry/nextjs": "^10.40.0",
     "lucide-react": "^0.475.0",

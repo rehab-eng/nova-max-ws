@@ -1,16 +1,9 @@
-import type { Metadata } from "next";
-import { Tajawal } from "next/font/google";
+﻿import type { Metadata } from "next";
 import "./globals.css";
 
-const tajawal = Tajawal({
-  variable: "--font-tajawal",
-  subsets: ["arabic"],
-  weight: ["300", "400", "500", "700", "800"],
-});
-
 export const metadata: Metadata = {
-  title: "لوحة المتجر - نوفا ماكس",
-  description: "إدارة طلبات التوصيل لمنصة نوفا ماكس",
+  title: "Nova Max Store Panel",
+  description: "Operations hub for Nova Max Logistics stores.",
 };
 
 export default function RootLayout({
@@ -20,9 +13,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="ar" dir="rtl">
-      <body className={`${tajawal.variable} font-sans antialiased`}>
-        {children}
-      </body>
+      <body className="font-sans antialiased">{children}</body>
     </html>
   );
 }
