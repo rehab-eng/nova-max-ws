@@ -226,6 +226,7 @@ export default function StorePanel() {
   const ordersRef = useRef<Order[]>([]);
   const hasLoadedRef = useRef(false);
   const flashTimers = useRef<Map<string, number>>(new Map());
+  const activeSectionRef = useRef<SectionKey>("dashboard");
   const driverStatusRef = useRef<Map<string, string>>(new Map());
 
   useEffect(() => {
@@ -516,6 +517,10 @@ export default function StorePanel() {
     }
   }, [adminCode, storeId]);
 
+  useEffect(() => {
+    activeSectionRef.current = activeSection;
+  }, [activeSection]);
+
   const flashOrder = (id: string) => {
     setFlashIds((prev) => {
       const next = new Set(prev);
@@ -676,7 +681,9 @@ export default function StorePanel() {
             )
           );
         }
-        toast("تم تحديث حالة السائق");
+        if (activeSectionRef.current === "drivers") {
+          toast("تم تحديث حالة السائق");
+        }
         return;
       }
       if (type === "driver_created") {
