@@ -167,10 +167,13 @@ export default function StorePanel() {
   const [storeId, setStoreId] = useState("");
   const [storeCode, setStoreCode] = useState("");
   const [adminCode, setAdminCode] = useState("");
+  const [isAuthed, setIsAuthed] = useState(false);
+  const [authChecking, setAuthChecking] = useState(false);
   const [storeName, setStoreName] = useState("");
   const [storeLabel, setStoreLabel] = useState<string | null>(null);
   const [savedStores, setSavedStores] = useState<SavedStore[]>([]);
   const [orderStoreId, setOrderStoreId] = useState("");
+  const [deleteStoreId, setDeleteStoreId] = useState("");
   const [driverName, setDriverName] = useState("");
   const [driverPhone, setDriverPhone] = useState("");
   const [driverCode, setDriverCode] = useState<string | null>(null);
@@ -187,6 +190,9 @@ export default function StorePanel() {
   const [ledgerWallet, setLedgerWallet] = useState<LedgerWalletRow[]>([]);
   const [ledgerDrivers, setLedgerDrivers] = useState<LedgerDriverRow[]>([]);
   const [ledgerPeriod, setLedgerPeriod] = useState("daily");
+  const [realtimeStatus, setRealtimeStatus] = useState<
+    "connecting" | "connected" | "disconnected"
+  >("disconnected");
 
   const ordersRef = useRef<Order[]>([]);
   const hasLoadedRef = useRef(false);
@@ -253,19 +259,26 @@ export default function StorePanel() {
   }, [storeCode]);
 
   useEffect(() => {
-    localStorage.setItem("nova.admin_code", adminCode);
-  }, [adminCode]);
+    if (isAuthed && adminCode) {
+      localStorage.setItem("nova.admin_code", adminCode);
+    }
+    if (!isAuthed) {
+      localStorage.removeItem("nova.admin_code");
+    }
+  }, [adminCode, isAuthed]);
 
   useEffect(() => {
     if (orderStoreId) return;
-    if (storeId) {
-      setOrderStoreId(storeId);
-      return;
-    }
-    if (availableStores.length) {
+    if (availableStores.length === 1) {
       setOrderStoreId(availableStores[0].id);
     }
-  }, [orderStoreId, storeId, availableStores]);
+  }, [orderStoreId, availableStores]);
+
+  useEffect(() => {
+    if (!orderStoreId) return;
+    const exists = availableStores.some((store) => store.id === orderStoreId);
+    if (!exists) setOrderStoreId("");
+  }, [orderStoreId, availableStores]);
 
   const clearStore = () => {
     localStorage.removeItem("nova.store_id");
@@ -274,10 +287,12 @@ export default function StorePanel() {
     setStoreCode("");
     setStoreLabel(null);
     setOrderStoreId("");
+    setRealtimeStatus("disconnected");
   };
 
   const logoutAdmin = () => {
     localStorage.removeItem("nova.admin_code");
+    setIsAuthed(false);
     clearStore();
     setSavedStores([]);
     setAdminCode("");
@@ -288,9 +303,10 @@ export default function StorePanel() {
       toast.error("رمز المنظومة مطلوب");
       return;
     }
-    const storeKey = storeId || storeCode;
+    const target = savedStores.find((store) => store.id === deleteStoreId);
+    const storeKey = target?.id ?? target?.store_code;
     if (!storeKey) {
-      toast.error("اختر متجرًا أولاً");
+      toast.error("اختر متجرًا للحذف أولاً");
       return;
     }
 
@@ -308,9 +324,14 @@ export default function StorePanel() {
       if (data?.ok) {
         toast.success("تم حذف المتجر", { id: toastId });
         setSavedStores((prev) =>
-          prev.filter((item) => item.id !== storeId && item.store_code !== storeCode)
+          prev.filter((item) => item.id !== storeKey && item.store_code !== storeKey)
         );
-        clearStore();
+        if (storeId === storeKey || storeCode === storeKey) {
+          clearStore();
+        }
+        if (deleteStoreId === storeKey) {
+          setDeleteStoreId("");
+        }
       } else {
         toast.error(data?.error ?? "تعذر حذف المتجر", { id: toastId });
       }
@@ -357,7 +378,6 @@ export default function StorePanel() {
     setStoreId(store.id);
     setStoreLabel(store.name ?? null);
     setStoreCode(store.store_code ?? "");
-    setOrderStoreId(store.id);
   };
 
   const fetchStores = async (silent = true) => {
@@ -374,19 +394,30 @@ export default function StorePanel() {
         const selected =
           list.find((store) => store.id === storeId) ?? list[0] ?? null;
         applyStoreSelection(selected);
+        setIsAuthed(true);
+        if (!deleteStoreId && list.length > 0) {
+          setDeleteStoreId(selected?.id ?? list[0].id);
+        }
         if (toastId) toast.success("تم تحديث القائمة", { id: toastId });
       } else if (toastId) {
         toast.error(data?.error ?? "تعذر جلب المتاجر", { id: toastId });
+        setIsAuthed(false);
+        setSavedStores([]);
+        clearStore();
       }
     } catch {
       if (toastId) toast.error("خطأ في الشبكة", { id: toastId });
+      setIsAuthed(false);
     }
   };
 
   useEffect(() => {
-    if (adminCode) {
-      fetchStores(true);
+    if (!adminCode) {
+      setIsAuthed(false);
+      return;
     }
+    setAuthChecking(true);
+    fetchStores(true).finally(() => setAuthChecking(false));
   }, [adminCode]);
 
   useEffect(() => {
@@ -601,6 +632,7 @@ export default function StorePanel() {
     };
 
     const startSocket = () => {
+      setRealtimeStatus("connecting");
       const wsUrl = buildWsUrl("/realtime", {
         role: "admin",
         admin_code: adminCode,
@@ -609,6 +641,7 @@ export default function StorePanel() {
 
       socket.onopen = () => {
         retry = 0;
+        setRealtimeStatus("connected");
         if (pingTimer) window.clearInterval(pingTimer);
         pingTimer = window.setInterval(() => {
           if (socket?.readyState === WebSocket.OPEN) {
@@ -634,6 +667,7 @@ export default function StorePanel() {
       socket.onclose = () => {
         if (pingTimer) window.clearInterval(pingTimer);
         if (!active) return;
+        setRealtimeStatus("disconnected");
         const delay = Math.min(30000, 1000 * 2 ** retry);
         retry += 1;
         reconnectTimer = window.setTimeout(startSocket, delay);
@@ -681,7 +715,7 @@ export default function StorePanel() {
     return { total, pending, delivering, delivered };
   }, [orders]);
 
-  const canCreateOrder = Boolean(adminCode && (orderStoreId || storeId));
+  const canCreateOrder = Boolean(adminCode && orderStoreId);
 
   const driverCodeMap = useMemo(() => {
     const map = new Map<string, string>();
@@ -1038,7 +1072,7 @@ export default function StorePanel() {
       toast.error("رمز المنظومة مطلوب");
       return;
     }
-    const storeForOrder = orderStoreId || storeId;
+    const storeForOrder = orderStoreId;
     if (!storeForOrder) {
       toast.error("اختر متجرًا أولاً");
       return;
@@ -1072,6 +1106,9 @@ export default function StorePanel() {
       if (data?.order?.id) {
         e.currentTarget.reset();
         toast.success("تم إنشاء الطلب", { id: toastId });
+        if (availableStores.length > 1) {
+          setOrderStoreId("");
+        }
         refreshOrders(true);
       } else {
         toast.error(data?.error ?? "فشل إنشاء الطلب", { id: toastId });
@@ -1089,7 +1126,7 @@ export default function StorePanel() {
     }
   }, [activeSection, ledgerPeriod]);
 
-  if (!adminCode) {
+  if (!isAuthed) {
     return (
       <div dir="rtl" className="min-h-screen bg-gradient-to-br from-cyan-50 via-white to-orange-50 text-slate-900">
         <Toaster position="top-right" />
@@ -1107,9 +1144,10 @@ export default function StorePanel() {
             <button
               type="button"
               onClick={() => fetchStores(false)}
-              className="mt-4 h-11 w-full rounded-xl bg-orange-500 text-sm font-semibold text-white transition hover:bg-orange-600"
+              className="mt-4 h-11 w-full rounded-xl bg-orange-500 text-sm font-semibold text-white transition hover:bg-orange-600 disabled:cursor-not-allowed disabled:bg-slate-300"
+              disabled={authChecking || !adminCode.trim()}
             >
-              دخول المنظومة
+              {authChecking ? "جارٍ التحقق..." : "دخول المنظومة"}
             </button>
           </div>
         </div>
@@ -1155,6 +1193,24 @@ export default function StorePanel() {
               <div className="rounded-full border border-white/70 bg-white/80 px-4 py-2">
                 تم التسليم{" "}
                 <span className="ml-2 font-semibold">{stats.delivered}</span>
+              </div>
+              <div className="rounded-full border border-white/70 bg-white/80 px-4 py-2">
+                الاتصال{" "}
+                <span
+                  className={`ml-2 font-semibold ${
+                    realtimeStatus === "connected"
+                      ? "text-emerald-600"
+                      : realtimeStatus === "connecting"
+                      ? "text-orange-500"
+                      : "text-rose-500"
+                  }`}
+                >
+                  {realtimeStatus === "connected"
+                    ? "متصل"
+                    : realtimeStatus === "connecting"
+                    ? "جارٍ الاتصال"
+                    : "منقطع"}
+                </span>
               </div>
             </div>
             <button
@@ -1384,21 +1440,38 @@ export default function StorePanel() {
                     <p className="mt-1">
                       سيتم حذف المتجر وجميع الطلبات والسائقين المرتبطين به.
                     </p>
+                    <div className="mt-3">
+                      <label className="mb-1 block text-xs font-semibold text-rose-700">
+                        اختر المتجر المراد حذفه
+                      </label>
+                      <select
+                        value={deleteStoreId}
+                        onChange={(e) => setDeleteStoreId(e.target.value)}
+                        className="h-11 w-full rounded-lg border border-rose-200 bg-white px-3 text-sm text-rose-900 outline-none focus:border-rose-400"
+                      >
+                        <option value="">اختر متجرًا للحذف</option>
+                        {savedStores.map((store) => (
+                          <option key={`del-${store.id}`} value={store.id}>
+                            {store.name ?? "متجر"} • {store.store_code ?? "-"}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
                     <button
                       type="button"
                       onClick={deleteStore}
-                      disabled={!adminCode || !storeId}
+                      disabled={!adminCode || !deleteStoreId}
                       className={`mt-3 inline-flex h-11 items-center rounded-lg px-5 text-sm font-semibold transition ${
-                        adminCode && storeId
+                        adminCode && deleteStoreId
                           ? "bg-rose-600 text-white hover:bg-rose-700"
                           : "cursor-not-allowed bg-rose-200 text-rose-400"
                       }`}
                     >
                       حذف المتجر الآن
                     </button>
-                    {!storeId && (
+                    {!deleteStoreId && (
                       <p className="mt-2 text-xs text-rose-700">
-                        يجب ربط المتجر أولاً ليظهر زر الحذف.
+                        اختر متجرًا من القائمة لإكمال عملية الحذف.
                       </p>
                     )}
                   </div>
@@ -1698,12 +1771,16 @@ export default function StorePanel() {
                       </label>
                       <select
                         className="h-11 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-900"
-                        value={orderStoreId}
+                        value={orderStoreId || ""}
                         onChange={(e) => {
                           const nextId = e.target.value;
                           setOrderStoreId(nextId);
                         }}
+                        required
                       >
+                        <option value="" disabled>
+                          اختر متجرًا للطلب
+                        </option>
                         {availableStores.map((store) => (
                           <option key={store.id} value={store.id}>
                             {store.name ?? store.id.slice(0, 6)}
@@ -1901,7 +1978,7 @@ export default function StorePanel() {
                   <div className="mt-4 grid gap-4 md:grid-cols-3">
                     <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-4">
                       <p className="text-xs text-slate-500">
-                        إجمالي هذا الأسبوع (السبت → السبت) - بتوقيت ليبيا
+                        إجمالي هذا الأسبوع (السبت → السبت)
                       </p>
                       <p className="mt-2 text-2xl font-semibold text-slate-900">
                         {inventorySummary.weekCount}
