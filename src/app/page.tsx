@@ -91,7 +91,7 @@ const sectionNav: Array<{ key: SectionKey; label: string; icon: typeof LayoutDas
   { key: "drivers", label: "السائقون", icon: Users },
   { key: "finance", label: "المالية", icon: Wallet },
   { key: "inventory", label: "الجرد", icon: ListOrdered },
-  { key: "settings", label: "الإعدادات", icon: Settings },
+  { key: "settings", label: "قائمة المتجر", icon: Settings },
 ];
 
 const navButtonBase =
@@ -146,6 +146,15 @@ function formatOrderNumber(id: string): string {
   const numeric = Number.parseInt(tail, 16);
   if (Number.isNaN(numeric)) return clean.slice(0, 6).toUpperCase();
   return String(numeric % 1_000_000).padStart(6, "0");
+}
+
+function formatOrderTotal(order: Order): string {
+  const hasAmount =
+    typeof order.price === "number" || typeof order.delivery_fee === "number";
+  if (!hasAmount) return "-";
+  const price = typeof order.price === "number" ? order.price : 0;
+  const fee = typeof order.delivery_fee === "number" ? order.delivery_fee : 0;
+  return (price + fee).toFixed(2);
 }
 
 const canUseWebAuthn = () =>
@@ -210,9 +219,6 @@ export default function StorePanel() {
   const [ledgerWallet, setLedgerWallet] = useState<LedgerWalletRow[]>([]);
   const [ledgerDrivers, setLedgerDrivers] = useState<LedgerDriverRow[]>([]);
   const [ledgerPeriod, setLedgerPeriod] = useState("daily");
-  const [inventoryQuery, setInventoryQuery] = useState("");
-  const [inventoryStatus, setInventoryStatus] = useState("all");
-  const [inventoryRange, setInventoryRange] = useState("30");
   const [biometricSupported, setBiometricSupported] = useState(false);
   const [biometricLinked, setBiometricLinked] = useState(false);
   const [financeUnlocked, setFinanceUnlocked] = useState(false);
@@ -220,6 +226,7 @@ export default function StorePanel() {
   const ordersRef = useRef<Order[]>([]);
   const hasLoadedRef = useRef(false);
   const flashTimers = useRef<Map<string, number>>(new Map());
+  const driverStatusRef = useRef<Map<string, string>>(new Map());
 
   useEffect(() => {
     setStoreId(localStorage.getItem("nova.store_id") ?? "");
@@ -653,6 +660,11 @@ export default function StorePanel() {
       }
       if (type === "driver_status") {
         if (typeof payload.driver_id === "string") {
+          const nextStatus =
+            typeof payload.status === "string" ? payload.status : "";
+          const prevStatus = driverStatusRef.current.get(payload.driver_id);
+          if (nextStatus && prevStatus === nextStatus) return;
+          if (nextStatus) driverStatusRef.current.set(payload.driver_id, nextStatus);
           setDrivers((prev) =>
             prev.map((driver) =>
               driver.id === payload.driver_id
@@ -841,34 +853,42 @@ export default function StorePanel() {
     });
   }, [drivers]);
 
-  const inventoryOrders = useMemo(() => {
-    const query = inventoryQuery.trim().toLowerCase();
-    const range = inventoryRange === "all" ? null : Number(inventoryRange);
-    const cutoff = range ? Date.now() - range * 86400000 : null;
+  const inventorySummary = useMemo(() => {
+    const toLibyaDate = (value?: string | null) => {
+      if (!value) return null;
+      const parsed = new Date(value);
+      if (Number.isNaN(parsed.getTime())) return null;
+      return new Date(
+        parsed.toLocaleString("en-US", { timeZone: "Africa/Tripoli" })
+      );
+    };
 
-    return sortedOrders.filter((order) => {
-      if (inventoryStatus !== "all" && order.status !== inventoryStatus) {
-        return false;
-      }
-      if (cutoff && order.created_at) {
-        const time = new Date(order.created_at).getTime();
-        if (!Number.isNaN(time) && time < cutoff) return false;
-      }
-      if (query) {
-        const hay = [
-          order.customer_name,
-          order.receiver_name,
-          order.order_type,
-          order.driver_id,
-        ]
-          .filter(Boolean)
-          .join(" ")
-          .toLowerCase();
-        if (!hay.includes(query)) return false;
-      }
-      return true;
+    const nowLibya =
+      toLibyaDate(new Date().toISOString()) ??
+      new Date(new Date().toLocaleString("en-US", { timeZone: "Africa/Tripoli" }));
+
+    const weekStart = new Date(nowLibya);
+    const day = weekStart.getDay(); // 0 Sunday ... 6 Saturday
+    const diff = (day - 6 + 7) % 7;
+    weekStart.setDate(weekStart.getDate() - diff);
+    weekStart.setHours(0, 0, 0, 0);
+    const weekEnd = new Date(weekStart);
+    weekEnd.setDate(weekStart.getDate() + 7);
+
+    const monthStart = new Date(nowLibya.getFullYear(), nowLibya.getMonth(), 1);
+    const monthEnd = new Date(nowLibya.getFullYear(), nowLibya.getMonth() + 1, 1);
+
+    let weekCount = 0;
+    let monthCount = 0;
+    sortedOrders.forEach((order) => {
+      const created = toLibyaDate(order.created_at);
+      if (!created) return;
+      if (created >= weekStart && created < weekEnd) weekCount += 1;
+      if (created >= monthStart && created < monthEnd) monthCount += 1;
     });
-  }, [sortedOrders, inventoryQuery, inventoryStatus, inventoryRange]);
+
+    return { weekCount, monthCount };
+  }, [sortedOrders]);
 
   const createStore = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -1141,8 +1161,8 @@ export default function StorePanel() {
       order_type: formData.get("order_type"),
       receiver_name: formData.get("receiver_name"),
       payout_method: formData.get("payout_method"),
-      price: formData.get("price"),
-      delivery_fee: formData.get("delivery_fee"),
+      price: formData.get("total_amount"),
+      delivery_fee: 0,
     };
     const driverCode = String(formData.get("driver_code") ?? "").trim();
     if (driverCode) payload.driver_code = driverCode;
@@ -1199,7 +1219,7 @@ export default function StorePanel() {
                 لوحة التحكم اللوجستية
               </p>
               <h1 className="text-3xl font-semibold tracking-tight">
-                نوفا ماكس
+                Nova Max
               </h1>
             </div>
           </div>
@@ -1293,7 +1313,7 @@ export default function StorePanel() {
     <th>العميل</th>
     <th>النوع</th>
     <th>الحالة</th>
-    <th className="text-left">الرسوم</th>
+    <th className="text-left">الإجمالي</th>
   </tr>
 </thead>
 
@@ -1323,9 +1343,7 @@ export default function StorePanel() {
                               </span>
                             </td>
                             <td className="text-left text-slate-700">
-                              {typeof order.delivery_fee === "number"
-                                ? order.delivery_fee.toFixed(2)
-                                : "-"}
+                              {formatOrderTotal(order)}
                             </td>
                           </tr>
                         ))}
@@ -1347,7 +1365,7 @@ export default function StorePanel() {
               <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
                 <div className="flex items-center justify-between">
                   <div>
-                    <h2 className="text-lg font-semibold">إعدادات النظام</h2>
+                    <h2 className="text-lg font-semibold">قائمة المتجر</h2>
                     <p className="mt-1 text-sm text-slate-500">
                       إدارة بيانات الوصول والرموز الخاصة بالنظام.
                     </p>
@@ -1355,14 +1373,6 @@ export default function StorePanel() {
                   <Settings className="h-5 w-5 text-slate-500" />
                 </div>
                 <div className="mt-5 rounded-lg border border-slate-200 bg-slate-50 p-4">
-                  <div className="mb-4 rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-800">
-                    <p className="font-semibold">خطوات الحذف (واضحة وسريعة)</p>
-                    <ol className="mt-2 list-decimal space-y-1 pr-4">
-                      <li>أدخل كود الإدارة واضغط ربط المتجر.</li>
-                      <li>تأكد أن اسم المتجر وكود المتجر ظهروا.</li>
-                      <li>اضغط زر حذف المتجر أسفل.</li>
-                    </ol>
-                  </div>
                   <div className="flex items-center justify-between">
                     <p className="text-sm font-semibold text-slate-900">بيانات المتجر</p>
                     <button
@@ -1790,7 +1800,7 @@ export default function StorePanel() {
                 </div>
                 {!canCreateOrder && (
                   <div className="mt-3 rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
-                    اختر متجرًا من الإعدادات أو اربط متجرًا صالحًا لإنشاء الطلبات.
+                    اختر متجرًا من قائمة المتجر أو اربط متجرًا صالحًا لإنشاء الطلبات.
                   </div>
                 )}
                 <form onSubmit={createOrder} className="mt-5 grid gap-3 md:grid-cols-2">
@@ -1823,7 +1833,7 @@ export default function StorePanel() {
                     </div>
                   ) : (
                     <div className="md:col-span-2 rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
-                      لا توجد متاجر محفوظة بعد. اذهب إلى الإعدادات لربط المتجر.
+                      لا توجد متاجر محفوظة بعد. اذهب إلى قائمة المتجر لربط المتجر.
                     </div>
                   )}
                   <input
@@ -1851,18 +1861,11 @@ export default function StorePanel() {
                     required
                   />
                   <input
-                    name="price"
+                    name="total_amount"
                     type="number"
                     step="0.01"
                     className="h-11 rounded-lg border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-slate-400"
-                    placeholder="سعر الطلب"
-                  />
-                  <input
-                    name="delivery_fee"
-                    type="number"
-                    step="0.01"
-                    className="h-11 rounded-lg border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-slate-400"
-                    placeholder="رسوم التوصيل"
+                    placeholder="الإجمالي"
                   />
                   <select
                     name="payout_method"
@@ -1910,7 +1913,7 @@ export default function StorePanel() {
                 </div>
                 {!adminCode && !storeId && (
                   <div className="mt-3 rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
-                    اختر متجرًا من الإعدادات أو اربط المتجر لعرض الجرد.
+                    اختر متجرًا من قائمة المتجر أو اربط المتجر لعرض الجرد.
                   </div>
                 )}
                 <div className="mt-4 overflow-x-auto">
@@ -1924,7 +1927,7 @@ export default function StorePanel() {
                         <th>السائق</th>
                         <th>الحالة</th>
                         <th>الدفع</th>
-                        <th className="text-left">الرسوم</th>
+                        <th className="text-left">الإجمالي</th>
                         <th className="text-left">إجراء</th>
                       </tr>
                     </thead>
@@ -1968,9 +1971,7 @@ export default function StorePanel() {
                             {formatPayout(order.payout_method)}
                           </td>
                           <td className="text-left text-slate-700">
-                            {typeof order.delivery_fee === "number"
-                              ? order.delivery_fee.toFixed(2)
-                              : "-"}
+                            {formatOrderTotal(order)}
                           </td>
                           <td className="text-left">
                             {order.status === "cancelled" && (
@@ -1990,7 +1991,7 @@ export default function StorePanel() {
                           <td colSpan={9} className="py-6 text-center text-slate-500">
                             {adminCode || storeId
                               ? "لا توجد طلبات حالياً."
-                              : "اختر متجرًا من الإعدادات أو اربط المتجر لعرض الطلبات."}
+                              : "اختر متجرًا من قائمة المتجر أو اربط المتجر لعرض الطلبات."}
                           </td>
                         </tr>
                       )}
@@ -2004,100 +2005,31 @@ export default function StorePanel() {
               <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
                 <div className="flex items-center gap-2 text-lg font-semibold">
                   <ListOrdered className="h-5 w-5 text-slate-600" />
-                  الجرد
-                </div>
-                <div className="mt-4 grid gap-3 md:grid-cols-3">
-                  <input
-                    className="h-11 rounded-lg border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-slate-400"
-                    placeholder="بحث سريع"
-                    value={inventoryQuery}
-                    onChange={(e) => setInventoryQuery(e.target.value)}
-                  />
-                  <select
-                    className="h-11 rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-900"
-                    value={inventoryStatus}
-                    onChange={(e) => setInventoryStatus(e.target.value)}
-                  >
-                    <option value="all">كل الحالات</option>
-                    <option value="pending">قيد الانتظار</option>
-                    <option value="accepted">تم القبول</option>
-                    <option value="delivering">قيد التوصيل</option>
-                    <option value="delivered">تم التسليم</option>
-                    <option value="cancelled">ملغي</option>
-                  </select>
-                  <select
-                    className="h-11 rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-900"
-                    value={inventoryRange}
-                    onChange={(e) => setInventoryRange(e.target.value)}
-                  >
-                    <option value="7">آخر 7 أيام</option>
-                    <option value="30">آخر 30 يوم</option>
-                    <option value="90">آخر 90 يوم</option>
-                    <option value="all">كل الفترات</option>
-                  </select>
+                  الجرد الداخلي
                 </div>
                 {!adminCode && !storeId && (
                   <div className="mt-4 rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
                     أدخل كود الإدارة أو اربط المتجر لعرض الجرد.
                   </div>
                 )}
-                <div className="mt-4 overflow-x-auto">
-                  <table className="w-full text-right text-sm">
-                    <thead className="text-xs text-slate-500">
-                      <tr>
-                        <th className="py-2">الرقم</th>
-                        <th>العميل</th>
-                        <th>النوع</th>
-                        <th>الحالة</th>
-                        <th>التاريخ</th>
-                        <th className="text-left">الرسوم</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-200">
-                      {inventoryOrders.map((order) => (
-                        <tr key={`${order.id}-inv`}>
-                          <td
-                            className="py-3 font-semibold text-slate-900"
-                            title={order.id}
-                          >
-                            #{formatOrderNumber(order.id)}
-                          </td>
-                          <td className="text-slate-700">
-                            {order.customer_name ?? "-"}
-                          </td>
-                          <td className="text-slate-700">
-                            {order.order_type ?? "-"}
-                          </td>
-                          <td>
-                            <span
-                              className={`inline-flex items-center rounded-full border px-2 py-1 text-xs font-medium ${
-                                statusStyles[order.status ?? ""] ??
-                                "border-slate-200 bg-slate-100 text-slate-700"
-                              }`}
-                            >
-                              {formatStatus(order.status)}
-                            </span>
-                          </td>
-                          <td className="text-slate-500">
-                            {formatDate(order.created_at)}
-                          </td>
-                          <td className="text-left text-slate-700">
-                            {typeof order.delivery_fee === "number"
-                              ? order.delivery_fee.toFixed(2)
-                              : "-"}
-                          </td>
-                        </tr>
-                      ))}
-                      {inventoryOrders.length == 0 && (
-                        <tr>
-                          <td colSpan={6} className="py-6 text-center text-slate-500">
-                            {adminCode || storeId ? "لا توجد بيانات." : "أدخل كود الإدارة أو اربط المتجر لعرض الجرد."}
-                          </td>
-                        </tr>
-                      )}
-                    </tbody>
-                  </table>
-                </div>
+                {(adminCode || storeId) && (
+                  <div className="mt-4 grid gap-4 md:grid-cols-2">
+                    <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-4">
+                      <p className="text-xs text-slate-500">
+                        إجمالي هذا الأسبوع (السبت → السبت) - بتوقيت ليبيا
+                      </p>
+                      <p className="mt-2 text-2xl font-semibold text-slate-900">
+                        {inventorySummary.weekCount}
+                      </p>
+                    </div>
+                    <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-4">
+                      <p className="text-xs text-slate-500">إجمالي هذا الشهر</p>
+                      <p className="mt-2 text-2xl font-semibold text-slate-900">
+                        {inventorySummary.monthCount}
+                      </p>
+                    </div>
+                  </div>
+                )}
               </section>
             )}
       </main>
