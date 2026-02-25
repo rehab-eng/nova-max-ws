@@ -904,7 +904,7 @@ export default function StorePanel() {
     setDriversLoading(true);
     try {
       const res = await fetch(
-        `${API_BASE}/drivers?admin_code=${encodeURIComponent(adminCode)}&active=all`
+        `${API_BASE}/drivers?admin_code=${encodeURIComponent(adminCode)}&active=all&limit=500`
       );
       const data = (await res.json()) as ApiResponse;
       if (data?.drivers) {
