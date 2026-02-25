@@ -197,6 +197,13 @@ export default function StorePanel() {
   const flashTimers = useRef<Map<string, number>>(new Map());
   const activeSectionRef = useRef<SectionKey>("dashboard");
   const driverStatusRef = useRef<Map<string, string>>(new Map());
+  const pendingCreateRef = useRef<{
+    receiverName: string | null;
+    location: string | null;
+    orderType: string | null;
+    price: number | null;
+    expiresAt: number;
+  } | null>(null);
 
   useEffect(() => {
     setStoreId(localStorage.getItem("nova.store_id") ?? "");
@@ -451,6 +458,40 @@ export default function StorePanel() {
     flashTimers.current.set(id, timeout);
   };
 
+  const confirmPendingCreate = (nextOrders: Order[]) => {
+    const pending = pendingCreateRef.current;
+    if (!pending) return;
+    const now = Date.now();
+    const match = nextOrders.find((order) => {
+      const name = (order.receiver_name ?? order.customer_name ?? "").trim();
+      const location = (order.customer_location_text ?? "").trim();
+      const orderType = (order.order_type ?? "").trim();
+      const price = typeof order.price === "number" ? order.price : 0;
+      const createdAt = order.created_at
+        ? new Date(order.created_at).getTime()
+        : 0;
+      const recent = createdAt ? Math.abs(now - createdAt) < 60000 : true;
+      return (
+        recent &&
+        name === (pending.receiverName ?? "") &&
+        location === (pending.location ?? "") &&
+        orderType === (pending.orderType ?? "") &&
+        price === (pending.price ?? 0)
+      );
+    });
+
+    if (match) {
+      pendingCreateRef.current = null;
+      toast.success("تم إنشاء الطلب بنجاح");
+      return;
+    }
+
+    if (now > pending.expiresAt) {
+      pendingCreateRef.current = null;
+      toast.error("تعذر تأكيد إنشاء الطلب، تحقق من القائمة.");
+    }
+  };
+
   const applyOrders = (nextOrders: Order[], showToasts: boolean) => {
     const prev = ordersRef.current;
     const prevMap = new Map(prev.map((order) => [order.id, order]));
@@ -485,6 +526,7 @@ export default function StorePanel() {
       }
     }
 
+    confirmPendingCreate(nextOrders);
     ordersRef.current = nextOrders;
     setOrders(nextOrders);
   };
@@ -1089,6 +1131,13 @@ export default function StorePanel() {
       price: formData.get("total_amount"),
       delivery_fee: 0,
     };
+    pendingCreateRef.current = {
+      receiverName: receiverName ? String(receiverName).trim() : null,
+      location: String(formData.get("customer_location_text") ?? "").trim() || null,
+      orderType: String(formData.get("order_type") ?? "").trim() || null,
+      price: Number(formData.get("total_amount") ?? 0) || 0,
+      expiresAt: Date.now() + 15000,
+    };
     const driverCode = String(formData.get("driver_code") ?? "").trim();
     if (driverCode) payload.driver_code = driverCode;
 
@@ -1114,7 +1163,7 @@ export default function StorePanel() {
         refreshOrders(true);
       }
     } catch {
-      toast.error("خطأ في الشبكة", { id: toastId });
+      toast("تم إرسال الطلب، جارٍ التأكيد...", { id: toastId, icon: "⏳" });
       refreshOrders(true);
     }
   };
