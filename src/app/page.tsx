@@ -766,9 +766,20 @@ export default function StorePanel() {
     return map;
   }, [drivers]);
 
+  const driverNameMap = useMemo(() => {
+    const map = new Map<string, string>();
+    drivers.forEach((driver) => {
+      if (driver.id && driver.name) map.set(driver.id, driver.name);
+    });
+    return map;
+  }, [drivers]);
+
   const formatDriverDisplay = (id?: string | null) => {
     if (!id) return "-";
+    const name = driverNameMap.get(id);
     const code = driverCodeMap.get(id);
+    if (name && code) return `${name} · #${code}`;
+    if (name) return name;
     if (code) return `#${code}`;
     return `#${formatOrderNumber(id)}`;
   };
