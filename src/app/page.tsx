@@ -119,10 +119,8 @@ function formatStatus(value: string | null | undefined): string {
 }
 
 const payoutLabels: Record<string, string> = {
-  card: "بطاقة مصرفية",
-  wallet: "محفظة",
+  wallet: "محفظة محلية",
   cash: "كاش",
-  bank_transfer: "حوالة مصرفية",
 };
 
 function formatPayout(value: string | null | undefined): string {
@@ -1647,9 +1645,7 @@ export default function StorePanel() {
                           onChange={(e) => setWalletMethod(e.target.value)}
                         >
                           <option value="wallet">محفظة محلية</option>
-                          <option value="card">بطاقة مصرفية</option>
-                          <option value="cash">نقداً</option>
-                          <option value="bank_transfer">حوالة مصرفية</option>
+                          <option value="cash">كاش</option>
                         </select>
                         <input
                           className="h-11 rounded-lg border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-slate-400"
@@ -1833,7 +1829,7 @@ export default function StorePanel() {
                     <option value="" disabled>
                       اختر طريقة الدفع
                     </option>
-                    <option value="wallet">محفظة</option>
+                    <option value="wallet">محفظة محلية</option>
                     <option value="cash">كاش</option>
                   </select>
                   <input
