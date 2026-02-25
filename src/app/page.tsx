@@ -1080,12 +1080,13 @@ export default function StorePanel() {
     const toastId = toast.loading("جاري إنشاء الطلب...");
 
     const formData = new FormData(e.currentTarget);
+    const receiverName = formData.get("receiver_name");
     const payload: Record<string, unknown> = {
       admin_code: adminForOrder,
-      customer_name: formData.get("customer_name"),
+      customer_name: receiverName,
       customer_location_text: formData.get("customer_location_text"),
       order_type: formData.get("order_type"),
-      receiver_name: formData.get("receiver_name"),
+      receiver_name: receiverName,
       payout_method: formData.get("payout_method"),
       price: formData.get("total_amount"),
       delivery_fee: 0,
@@ -1799,12 +1800,6 @@ export default function StorePanel() {
                     </div>
                   )}
                   <input
-                    name="customer_name"
-                    className="h-11 rounded-lg border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-slate-400"
-                    placeholder="اسم العميل"
-                    required
-                  />
-                  <input
                     name="receiver_name"
                     className="h-11 rounded-lg border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-slate-400"
                     placeholder="اسم المستلم"
@@ -1813,7 +1808,7 @@ export default function StorePanel() {
                   <input
                     name="customer_location_text"
                     className="h-11 rounded-lg border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-slate-400"
-                    placeholder="عنوان العميل"
+                    placeholder="عنوان المستلم"
                     required
                   />
                   <input
