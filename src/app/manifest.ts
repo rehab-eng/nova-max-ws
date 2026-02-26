@@ -4,9 +4,9 @@ export const dynamic = "force-static";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "Nova Max Logistics",
-    short_name: "Nova Max",
-    description: "Nova Max Logistics control center.",
+  name: "Nova Max",
+  short_name: "Nova Max",
+  description: "Nova Max control center.",
     start_url: "/",
     display: "standalone",
     background_color: "#f8fafc",
