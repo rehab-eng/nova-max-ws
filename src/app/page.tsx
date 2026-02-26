@@ -21,8 +21,13 @@ const API_BASE = process.env.NEXT_PUBLIC_API_BASE ?? "https://nova-backend.rehab
 type Order = {
   id: string;
   store_id: string | null;
+  store_name?: string | null;
+  store_code?: string | null;
   driver_id: string | null;
+  driver_name?: string | null;
+  driver_phone?: string | null;
   customer_name: string | null;
+  customer_phone?: string | null;
   customer_location_text: string | null;
   order_type: string | null;
   receiver_name: string | null;
@@ -32,6 +37,9 @@ type Order = {
   status: string | null;
   created_at: string | null;
   delivered_at?: string | null;
+  cancelled_at?: string | null;
+  cancel_reason?: string | null;
+  cancelled_by?: string | null;
 };
 
 type DriverRow = {
@@ -71,7 +79,10 @@ type SavedStore = {
   store_code: string | null;
 };
 
-type ApiResponse = Record<string, any>;
+type ApiResponse<T = Record<string, unknown>> = {
+  ok?: boolean;
+  error?: string;
+} & T;
 
 type SectionKey =
   | "dashboard"
@@ -93,9 +104,11 @@ const sectionNav: Array<{ key: SectionKey; label: string; icon: typeof LayoutDas
 ];
 
 const navButtonBase =
-  "w-full rounded-md px-3 py-2 text-sm font-semibold transition flex items-center justify-between text-right";
-const navButtonActive = "bg-orange-500 text-white";
-const navButtonInactive = "text-slate-200 hover:bg-slate-800/60";
+  "group w-full rounded-2xl border border-slate-200/70 px-4 py-3 text-sm font-semibold transition flex items-center justify-between text-right bg-white/80";
+const navButtonActive =
+  "border-transparent bg-gradient-to-l from-sky-500 to-orange-400 text-white shadow-[0_20px_45px_-26px_rgba(14,165,233,0.7)]";
+const navButtonInactive =
+  "text-slate-700 hover:border-sky-200 hover:bg-gradient-to-l hover:from-sky-50 hover:to-orange-50";
 
 const statusStyles: Record<string, string> = {
   pending: "bg-slate-100 text-slate-700 border-slate-200",
@@ -118,6 +131,11 @@ function formatStatus(value: string | null | undefined): string {
   return statusLabels[value] ?? value;
 }
 
+function getErrorMessage(data: { error?: string } | null | undefined, fallback: string): string {
+  const message = data?.error;
+  return typeof message === "string" && message.trim() ? message : fallback;
+}
+
 const payoutLabels: Record<string, string> = {
   wallet: "محفظة محلية",
   cash: "كاش",
@@ -133,6 +151,18 @@ function formatDate(value?: string | null): string {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return "-";
   return date.toLocaleDateString("ar", { day: "2-digit", month: "short" });
+}
+
+function formatDateTime(value?: string | null): string {
+  if (!value) return "-";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "-";
+  return date.toLocaleString("ar", {
+    day: "2-digit",
+    month: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
 }
 
 function formatOrderNumber(id: string): string {
@@ -199,6 +229,7 @@ export default function StorePanel() {
   const driverStatusRef = useRef<Map<string, string>>(new Map());
   const pendingCreateRef = useRef<{
     receiverName: string | null;
+    phone: string | null;
     location: string | null;
     orderType: string | null;
     price: number | null;
@@ -325,7 +356,7 @@ export default function StorePanel() {
           body: JSON.stringify({ admin_code: adminCode, purge: true }),
         }
       );
-      const data = (await res.json()) as ApiResponse;
+      const data = (await res.json()) as ApiResponse<{ stores?: SavedStore[] }>;
       if (data?.ok) {
         toast.success("تم حذف المتجر", { id: toastId });
         setSavedStores((prev) =>
@@ -338,7 +369,7 @@ export default function StorePanel() {
           setDeleteStoreId("");
         }
       } else {
-        toast.error(data?.error ?? "تعذر حذف المتجر", { id: toastId });
+        toast.error(getErrorMessage(data, "تعذر حذف المتجر"), { id: toastId });
       }
     } catch {
       toast.error("خطأ في الشبكة", { id: toastId });
@@ -386,13 +417,13 @@ export default function StorePanel() {
   };
 
   const fetchStores = async (silent = true) => {
-    if (!adminCode) return;
+    if (!adminCode || adminCode.trim().length < 4) return;
     const toastId = silent ? null : toast.loading("جاري تحديث قائمة المتاجر...");
     try {
       const res = await fetch(
         `${API_BASE}/stores?admin_code=${encodeURIComponent(adminCode)}`
       );
-      const data = (await res.json()) as ApiResponse;
+      const data = (await res.json()) as ApiResponse<{ stores?: SavedStore[] }>;
       if (data?.stores) {
         const list = data.stores as SavedStore[];
         setSavedStores(list);
@@ -404,10 +435,11 @@ export default function StorePanel() {
           setDeleteStoreId(selected?.id ?? list[0].id);
         }
         if (toastId) toast.success("تم تحديث القائمة", { id: toastId });
-      } else if (toastId) {
-        toast.error(data?.error ?? "تعذر جلب المتاجر", { id: toastId });
+      } else {
+        if (toastId) {
+          toast.error(getErrorMessage(data, "تعذر جلب المتاجر"), { id: toastId });
+        }
         setIsAuthed(false);
-        setSavedStores([]);
         clearStore();
       }
     } catch {
@@ -417,7 +449,7 @@ export default function StorePanel() {
   };
 
   useEffect(() => {
-    if (!adminCode) {
+    if (!adminCode || adminCode.trim().length < 4) {
       setIsAuthed(false);
       return;
     }
@@ -464,6 +496,7 @@ export default function StorePanel() {
     const now = Date.now();
     const match = nextOrders.find((order) => {
       const name = (order.receiver_name ?? order.customer_name ?? "").trim();
+      const phone = (order.customer_phone ?? "").trim();
       const location = (order.customer_location_text ?? "").trim();
       const orderType = (order.order_type ?? "").trim();
       const price = typeof order.price === "number" ? order.price : 0;
@@ -474,6 +507,7 @@ export default function StorePanel() {
       return (
         recent &&
         name === (pending.receiverName ?? "") &&
+        phone === (pending.phone ?? "") &&
         location === (pending.location ?? "") &&
         orderType === (pending.orderType ?? "") &&
         price === (pending.price ?? 0)
@@ -536,10 +570,14 @@ export default function StorePanel() {
     const query = `store_id=${encodeURIComponent(storeId)}&admin_code=${encodeURIComponent(adminCode)}`;
     try {
       const res = await fetch(`${API_BASE}/orders?${query}`);
-      const data = (await res.json()) as ApiResponse;
-      if (data?.orders) {
-        applyOrders(data.orders as Order[], showToasts && hasLoadedRef.current);
+      const data = (await res.json()) as ApiResponse<{ orders?: Order[] }>;
+      const orders = Array.isArray(data?.orders) ? (data.orders as Order[]) : [];
+      if (orders.length || data?.orders) {
+        applyOrders(orders, showToasts && hasLoadedRef.current);
         if (!hasLoadedRef.current) hasLoadedRef.current = true;
+        if (realtimeStatus === "disconnected") {
+          setRealtimeStatus("connected");
+        }
       }
     } catch {
       if (showToasts) toast.error("تعذر تحميل الطلبات");
@@ -547,7 +585,7 @@ export default function StorePanel() {
   };
 
   useEffect(() => {
-    if (!storeId || !adminCode) return;
+    if (!storeId || !adminCode || !isAuthed) return;
     let active = true;
     let source: EventSource | null = null;
     let socket: WebSocket | null = null;
@@ -559,10 +597,16 @@ export default function StorePanel() {
     const fetchOrders = async (showToasts: boolean) => {
       try {
         const res = await fetch(`${API_BASE}/orders?${query}`);
-        const data = (await res.json()) as ApiResponse;
-        if (active && data?.orders) {
-          applyOrders(data.orders, showToasts && hasLoadedRef.current);
-          if (!hasLoadedRef.current) hasLoadedRef.current = true;
+        const data = (await res.json()) as ApiResponse<{ orders?: Order[] }>;
+        if (active) {
+          const orders = Array.isArray(data?.orders) ? (data.orders as Order[]) : [];
+          if (orders.length || data?.orders) {
+            applyOrders(orders, showToasts && hasLoadedRef.current);
+            if (!hasLoadedRef.current) hasLoadedRef.current = true;
+            if (realtimeStatus === "disconnected") {
+              setRealtimeStatus("connected");
+            }
+          }
         }
       } catch {
         if (showToasts) toast.error("تعذر تحميل الطلبات");
@@ -607,6 +651,12 @@ export default function StorePanel() {
               typeof payload.delivered_at === "string"
                 ? payload.delivered_at
                 : null,
+            cancel_reason:
+              typeof payload.cancel_reason === "string" ? payload.cancel_reason : null,
+            cancelled_at:
+              typeof payload.cancelled_at === "string" ? payload.cancelled_at : null,
+            cancelled_by:
+              typeof payload.cancelled_by === "string" ? payload.cancelled_by : null,
           },
           true
         );
@@ -745,7 +795,7 @@ export default function StorePanel() {
       if (reconnectTimer) window.clearTimeout(reconnectTimer);
       window.clearInterval(poll);
     };
-  }, [storeId, adminCode]);
+  }, [storeId, adminCode, isAuthed]);
 
   const stats = useMemo(() => {
     const total = orders.length;
@@ -879,7 +929,7 @@ export default function StorePanel() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name: storeName, admin_code: adminCode }),
       });
-      const data = (await res.json()) as ApiResponse;
+      const data = (await res.json()) as ApiResponse<{ store?: SavedStore }>;
       if (data?.store?.id) {
         const created: SavedStore = {
           id: data.store.id,
@@ -891,7 +941,7 @@ export default function StorePanel() {
         toast.success("تم إنشاء المتجر", { id: toastId });
         setStoreName("");
       } else {
-        toast.error(data?.error ?? "فشل إنشاء المتجر", { id: toastId });
+        toast.error(getErrorMessage(data, "فشل إنشاء المتجر"), { id: toastId });
       }
     } catch {
       toast.error("خطأ في الشبكة", { id: toastId });
@@ -923,7 +973,7 @@ export default function StorePanel() {
         body: JSON.stringify(payload),
       });
 
-      const data = (await res.json()) as ApiResponse;
+      const data = (await res.json()) as ApiResponse<{ driver?: DriverRow }>;
       const code = data?.driver?.driver_code ?? data?.driver?.secret_code;
       if (code) {
         setDriverCode(code);
@@ -933,7 +983,7 @@ export default function StorePanel() {
         toast("تم تجهيز صندوق نسخ الكود", { icon: "✨" });
         fetchDrivers();
       } else {
-        toast.error(data?.error ?? "فشل إنشاء السائق", { id: toastId });
+        toast.error(getErrorMessage(data, "فشل إنشاء السائق"), { id: toastId });
       }
     } catch {
       toast.error("خطأ في الشبكة", { id: toastId });
@@ -957,11 +1007,11 @@ export default function StorePanel() {
       const res = await fetch(
         `${API_BASE}/drivers?admin_code=${encodeURIComponent(adminCode)}&active=all&limit=500`
       );
-      const data = (await res.json()) as ApiResponse;
+      const data = (await res.json()) as ApiResponse<{ drivers?: DriverRow[] }>;
       if (data?.drivers) {
         const drivers = (data.drivers as DriverRow[]).map((driver) => ({
           ...driver,
-          driver_code: (driver as any).driver_code ?? (driver as any).secret_code ?? null,
+          driver_code: driver.driver_code ?? driver.secret_code ?? null,
         }));
         setDrivers(drivers);
       }
@@ -987,8 +1037,13 @@ export default function StorePanel() {
           )}&store_id=${encodeURIComponent(storeId)}&period=${encodeURIComponent(period)}`
         ),
       ]);
-      const summaryData = (await summaryRes.json()) as ApiResponse;
-      const driversData = (await driversRes.json()) as ApiResponse;
+      const summaryData = (await summaryRes.json()) as ApiResponse<{
+        orders?: LedgerSummaryRow[];
+        wallet?: LedgerWalletRow[];
+      }>;
+      const driversData = (await driversRes.json()) as ApiResponse<{
+        drivers?: LedgerDriverRow[];
+      }>;
       setLedgerSummary((summaryData?.orders ?? []) as LedgerSummaryRow[]);
       setLedgerWallet((summaryData?.wallet ?? []) as LedgerWalletRow[]);
       setLedgerDrivers((driversData?.drivers ?? []) as LedgerDriverRow[]);
@@ -1003,7 +1058,7 @@ export default function StorePanel() {
       return;
     }
     if (!walletDriverId.trim()) {
-      toast.error("معرّف السائق مطلوب");
+      toast.error("كود السائق أو المعرّف مطلوب");
       return;
     }
     const amountValue = Number(walletAmount);
@@ -1026,6 +1081,7 @@ export default function StorePanel() {
           headers: { "Content-Type": "application/json", "X-Admin-Code": adminCode },
           body: JSON.stringify({
             admin_code: adminCode,
+            store_id: storeId,
             amount: amountValue,
             method: walletMethod,
             note: walletNote,
@@ -1039,7 +1095,7 @@ export default function StorePanel() {
         setWalletNote("");
         fetchLedger(ledgerPeriod);
       } else {
-        toast.error(data?.error ?? "فشل تحديث المحفظة", { id: toastId });
+        toast.error(getErrorMessage(data, "فشل تحديث المحفظة"), { id: toastId });
       }
     } catch {
       toast.error("خطأ في الشبكة", { id: toastId });
@@ -1078,7 +1134,7 @@ export default function StorePanel() {
         });
         fetchDrivers();
       } else {
-        toast.error(data?.error ?? "فشل تحديث السائق", { id: toastId });
+        toast.error(getErrorMessage(data, "فشل تحديث السائق"), { id: toastId });
       }
     } catch {
       toast.error("خطأ في الشبكة", { id: toastId });
@@ -1104,12 +1160,12 @@ export default function StorePanel() {
           status: "pending",
         }),
       });
-      const data = (await res.json()) as ApiResponse;
+      const data = (await res.json()) as ApiResponse<{ drivers?: DriverRow[] }>;
       if (data?.ok) {
         toast.success("تمت إعادة الطلب", { id: toastId });
         refreshOrders(true);
       } else {
-        toast.error(data?.error ?? "تعذر إعادة الطلب", { id: toastId });
+        toast.error(getErrorMessage(data, "تعذر إعادة الطلب"), { id: toastId });
       }
     } catch {
       toast.error("خطأ في الشبكة", { id: toastId });
@@ -1132,9 +1188,11 @@ export default function StorePanel() {
 
     const formData = new FormData(e.currentTarget);
     const receiverName = formData.get("receiver_name");
+    const customerPhone = formData.get("customer_phone");
     const payload: Record<string, unknown> = {
       admin_code: adminForOrder,
       customer_name: receiverName,
+      customer_phone: customerPhone,
       customer_location_text: formData.get("customer_location_text"),
       order_type: formData.get("order_type"),
       receiver_name: receiverName,
@@ -1144,6 +1202,7 @@ export default function StorePanel() {
     };
     pendingCreateRef.current = {
       receiverName: receiverName ? String(receiverName).trim() : null,
+      phone: customerPhone ? String(customerPhone).trim() : null,
       location: String(formData.get("customer_location_text") ?? "").trim() || null,
       orderType: String(formData.get("order_type") ?? "").trim() || null,
       price: Number(formData.get("total_amount") ?? 0) || 0,
@@ -1161,7 +1220,7 @@ export default function StorePanel() {
         body: JSON.stringify(payload),
       });
 
-      const data = (await res.json()) as ApiResponse;
+      const data = (await res.json()) as ApiResponse<{ order?: Order }>;
       if (data?.order?.id) {
         e.currentTarget.reset();
         toast.success("تم إنشاء الطلب", { id: toastId });
@@ -1170,7 +1229,7 @@ export default function StorePanel() {
         }
         refreshOrders(true);
       } else {
-        toast.error(data?.error ?? "فشل إنشاء الطلب", { id: toastId });
+        toast.error(getErrorMessage(data, "فشل إنشاء الطلب"), { id: toastId });
         refreshOrders(true);
       }
     } catch {
@@ -1187,27 +1246,52 @@ export default function StorePanel() {
 
   if (!isAuthed) {
     return (
-      <div dir="rtl" className="min-h-screen bg-gradient-to-br from-cyan-50 via-white to-orange-50 text-slate-900">
+      <div
+        dir="rtl"
+        className="min-h-screen bg-gradient-to-br from-cyan-50 via-white to-orange-50 text-slate-900"
+      >
         <Toaster position="top-right" />
         <div className="mx-auto flex min-h-screen w-full max-w-md flex-col justify-center px-6 py-12">
-          <div className="rounded-3xl border border-white/70 bg-white/80 p-6 text-center shadow-[0_20px_40px_-24px_rgba(15,23,42,0.35)] backdrop-blur">
-            <img src="/logo.webp" alt="Nova Max" className="mx-auto h-16 w-16 rounded-2xl border border-slate-200 bg-white" />
-            <h1 className="mt-4 text-2xl font-semibold">Nova Max</h1>
-            <p className="mt-2 text-sm text-slate-500">أدخل رمز المنظومة للمتابعة.</p>
-            <input
-              className="mt-6 h-11 w-full rounded-xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-orange-400"
-              placeholder="رمز المنظومة"
-              value={adminCode}
-              onChange={(e) => setAdminCode(e.target.value)}
-            />
-            <button
-              type="button"
-              onClick={() => fetchStores(false)}
-              className="mt-4 h-11 w-full rounded-xl bg-orange-500 text-sm font-semibold text-white transition hover:bg-orange-600 disabled:cursor-not-allowed disabled:bg-slate-300"
-              disabled={authChecking || !adminCode.trim()}
-            >
-              {authChecking ? "جارٍ التحقق..." : "دخول المنظومة"}
-            </button>
+          <div className="rounded-3xl border border-white/70 bg-white/90 p-7 shadow-[0_24px_60px_-32px_rgba(15,23,42,0.45)] backdrop-blur">
+            <div className="flex items-center gap-4">
+              <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-white">
+                <img
+                  src="/logo.webp"
+                  alt="Nova Max"
+                  className="h-12 w-12 rounded-2xl border border-slate-200 bg-white"
+                />
+              </div>
+              <div className="text-right">
+                <p className="text-[11px] tracking-[0.35em] text-slate-400">NOVA MAX</p>
+                <h1 className="text-xl font-semibold">بوابة المتاجر</h1>
+                <p className="mt-1 text-sm text-slate-500">
+                  أدخل كود الإدارة للمتابعة.
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-6 grid gap-3 text-right">
+              <label className="text-xs font-semibold text-slate-500">كود الإدارة</label>
+              <input
+                className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none transition focus:border-orange-400"
+                placeholder="ادخل الرمز السري"
+                value={adminCode}
+                onChange={(e) => setAdminCode(e.target.value)}
+              />
+              <button
+                type="button"
+                onClick={() => fetchStores(false)}
+                className="mt-2 h-12 w-full rounded-2xl bg-gradient-to-l from-orange-500 to-amber-400 text-sm font-semibold text-white shadow-lg shadow-orange-500/30 transition hover:translate-y-[-1px] disabled:cursor-not-allowed disabled:bg-slate-300 disabled:shadow-none"
+              disabled={authChecking || adminCode.trim().length < 4}
+              >
+                {authChecking ? "جارٍ التحقق..." : "تأكيد الدخول"}
+              </button>
+            </div>
+
+            <div className="mt-5 flex items-center justify-between text-[11px] text-slate-400">
+              <span>Nova Max</span>
+              <span>لوحة المتاجر الرسمية</span>
+            </div>
           </div>
         </div>
       </div>
@@ -1223,7 +1307,7 @@ export default function StorePanel() {
             <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-white">
               <img
                 src="/logo.webp"
-                alt="Nova"
+                alt="Nova Max"
                 className="h-14 w-14 rounded-2xl border border-slate-200 bg-white"
               />
             </div>
@@ -1232,7 +1316,7 @@ export default function StorePanel() {
                 لوحة التحكم اللوجستية
               </p>
               <h1 className="text-3xl font-semibold tracking-tight">
-                Nova Max Logistics
+                Nova Max
               </h1>
             </div>
           </div>
@@ -1320,7 +1404,7 @@ export default function StorePanel() {
                       {storeLabel ?? "غير محدد"}
                     </p>
                     <p className="mt-2 text-xs text-slate-500">
-                      المعرّف: {storeId || "-"}
+                      كود المتجر: {storeCode || "-"}
                     </p>
                   </div>
                   <div className="rounded-lg border border-slate-200 p-4">
@@ -1427,7 +1511,7 @@ export default function StorePanel() {
                   <div className="mt-4 grid gap-3 md:grid-cols-2">
                     <input
                       className="h-11 rounded-lg border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-orange-400"
-                      placeholder="رمز المنظومة"
+                      placeholder="ادخل الرمز السري"
                       value={adminCode}
                       onChange={(e) => setAdminCode(e.target.value)}
                     />
@@ -1687,7 +1771,7 @@ export default function StorePanel() {
                       <div className="mt-4 grid gap-3">
                         <input
                           className="h-11 rounded-lg border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-slate-400"
-                          placeholder="معرّف السائق"
+                          placeholder="كود السائق أو المعرّف"
                           value={walletDriverId}
                           onChange={(e) => setWalletDriverId(e.target.value)}
                         />
@@ -1745,6 +1829,7 @@ export default function StorePanel() {
                           <option value="daily">يومي</option>
                           <option value="weekly">أسبوعي</option>
                           <option value="monthly">شهري</option>
+                          <option value="yearly">سنوي</option>
                         </select>
                       </div>
 
@@ -1862,6 +1947,13 @@ export default function StorePanel() {
                     required
                   />
                   <input
+                    name="customer_phone"
+                    inputMode="tel"
+                    className="h-11 rounded-lg border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-slate-400"
+                    placeholder="رقم هاتف المستلم"
+                    required
+                  />
+                  <input
                     name="customer_location_text"
                     className="h-11 rounded-lg border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-slate-400"
                     placeholder="عنوان المستلم"
@@ -1934,11 +2026,12 @@ export default function StorePanel() {
                     <thead className="text-xs text-slate-500">
                       <tr>
                         <th className="py-2">الرقم</th>
-                        <th>العميل</th>
                         <th>المستلم</th>
+                        <th>العنوان</th>
                         <th>النوع</th>
                         <th>السائق</th>
                         <th>الحالة</th>
+                        <th>التوقيت</th>
                         <th>الدفع</th>
                         <th className="text-left">الإجمالي</th>
                         <th className="text-left">إجراء</th>
@@ -1959,16 +2052,31 @@ export default function StorePanel() {
                             #{formatOrderNumber(order.id)}
                           </td>
                           <td className="text-slate-700">
-                            {order.customer_name ?? "-"}
+                            <p>{order.receiver_name ?? order.customer_name ?? "-"}</p>
+                            <p className="mt-1 text-xs text-slate-500">
+                              {order.customer_phone ? (
+                                <a
+                                  href={`tel:${order.customer_phone}`}
+                                  className="font-semibold text-orange-600 hover:underline"
+                                >
+                                  {order.customer_phone}
+                                </a>
+                              ) : (
+                                "-"
+                              )}
+                            </p>
                           </td>
                           <td className="text-slate-700">
-                            {order.receiver_name ?? "-"}
+                            {order.customer_location_text ?? "-"}
                           </td>
-                          <td className="text-slate-700">
-                            {order.order_type ?? "-"}
-                          </td>
+                          <td className="text-slate-700">{order.order_type ?? "-"}</td>
                           <td className="text-slate-500" title={order.driver_id ?? undefined}>
-                            {formatDriverDisplay(order.driver_id)}
+                            <p>{order.driver_name ?? formatDriverDisplay(order.driver_id)}</p>
+                            {order.driver_phone && (
+                              <p className="mt-1 text-xs text-slate-500">
+                                {order.driver_phone}
+                              </p>
+                            )}
                           </td>
                           <td>
                             <span
@@ -1979,6 +2087,36 @@ export default function StorePanel() {
                             >
                               {formatStatus(order.status)}
                             </span>
+                            <div className="mt-2 flex items-center gap-1">
+                              {["pending", "delivering", "delivered"].map((step, index) => {
+                                const stepIndex =
+                                  order.status === "delivered"
+                                    ? 2
+                                    : order.status === "delivering" ||
+                                        order.status === "accepted"
+                                      ? 1
+                                      : 0;
+                                const active = index <= stepIndex;
+                                return (
+                                  <span
+                                    key={`${order.id}-${step}`}
+                                    className={`h-2 w-2 rounded-full ${
+                                      active ? "bg-orange-500" : "bg-slate-200"
+                                    }`}
+                                  />
+                                );
+                              })}
+                            </div>
+                            {order.status === "cancelled" && order.cancel_reason && (
+                              <p className="mt-2 text-xs text-rose-600">
+                                سبب الإلغاء: {order.cancel_reason}
+                              </p>
+                            )}
+                          </td>
+                          <td className="text-slate-600">
+                            {formatDateTime(
+                              order.delivered_at ?? order.cancelled_at ?? order.created_at
+                            )}
                           </td>
                           <td className="text-slate-700">
                             {formatPayout(order.payout_method)}
@@ -2001,7 +2139,7 @@ export default function StorePanel() {
                       ))}
                       {sortedOrders.length == 0 && (
                         <tr>
-                          <td colSpan={9} className="py-6 text-center text-slate-500">
+                          <td colSpan={10} className="py-6 text-center text-slate-500">
                             {storeId
                               ? "لا توجد طلبات حالياً."
                               : "اختر متجرًا من قائمة المتاجر لعرض الطلبات."}
@@ -2054,27 +2192,53 @@ export default function StorePanel() {
       </main>
 
       <aside className="order-1 lg:order-2">
-        <div className="rounded-2xl bg-slate-950 p-5 text-white shadow-sm lg:sticky lg:top-6">
-          <p className="text-xs tracking-[0.25em] text-slate-400">الأقسام</p>
-          <div className="mt-4 grid gap-2">
-            {sectionNav.map((item) => (
-              <button
-                key={item.key}
-                type="button"
-                onClick={() => goToSection(item.key)}
-                className={`${navButtonBase} ${
-                  activeSection === item.key ? navButtonActive : navButtonInactive
-                }`}
-              >
-                <item.icon className="h-4 w-4" />
-                {item.label}
-              </button>
-            ))}
+        <div className="rounded-3xl border border-sky-100/70 bg-gradient-to-b from-sky-50 via-white to-orange-50/60 p-6 text-slate-900 shadow-[0_28px_60px_-34px_rgba(15,23,42,0.35)] lg:sticky lg:top-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-[11px] font-semibold tracking-[0.3em] text-sky-600">
+                الأقسام
+              </p>
+              <p className="mt-1 text-xs text-slate-500">لوحة المتجر</p>
+            </div>
+            <div className="h-11 w-11 rounded-2xl border border-sky-100 bg-white shadow-[inset_0_0_0_1px_rgba(255,255,255,0.8)]" />
+          </div>
+          <div className="mt-5 grid gap-3">
+            {sectionNav.map((item) => {
+              const isActive = activeSection === item.key;
+              return (
+                <button
+                  key={item.key}
+                  type="button"
+                  onClick={() => goToSection(item.key)}
+                  className={`${navButtonBase} ${isActive ? navButtonActive : navButtonInactive}`}
+                >
+                  <span className="inline-flex items-center gap-3">
+                    <span
+                      className={`inline-flex h-9 w-9 items-center justify-center rounded-xl border transition ${
+                        isActive
+                          ? "border-white/40 bg-white/15 text-white"
+                          : "border-slate-200/70 bg-white text-slate-500 group-hover:border-sky-200 group-hover:text-sky-600"
+                      }`}
+                    >
+                      <item.icon className="h-4 w-4" />
+                    </span>
+                    <span>{item.label}</span>
+                  </span>
+                  <span
+                    className={`h-2.5 w-2.5 rounded-full transition ${
+                      isActive
+                        ? "bg-white/80"
+                        : "bg-slate-300/70 group-hover:bg-sky-400/70"
+                    }`}
+                  />
+                </button>
+              );
+            })}
           </div>
           <button
             type="button"
             onClick={logoutAdmin}
-            className="mt-6 flex w-full items-center justify-between rounded-md bg-slate-900 px-4 py-3 text-sm font-semibold text-slate-100 hover:bg-slate-800"
+            className="mt-6 flex w-full items-center justify-between rounded-2xl border border-sky-200/70 bg-white px-4 py-3 text-sm font-semibold text-slate-700 shadow-sm transition hover:border-sky-300 hover:text-sky-700"
           >
             تسجيل الخروج
             <LogOut className="h-4 w-4" />
