@@ -920,21 +920,23 @@ export default function StorePanel() {
       selectedDriverId
     )}&admin_code=${encodeURIComponent(adminCode)}&limit=500`;
     setDriverOrdersLoading(true);
-    fetch(`${API_BASE}/orders?${query}`)
-      .then((res) => res.json())
-      .then((data: ApiResponse<{ orders?: Order[] }>) => {
+    const fetchDriverOrders = async () => {
+      try {
+        const res = await fetch(`${API_BASE}/orders?${query}`);
+        const data = (await res.json()) as ApiResponse<{ orders?: Order[] }>;
         if (!active) return;
         const list = Array.isArray(data?.orders) ? (data.orders as Order[]) : [];
         setDriverOrders(list);
         setDriverOrdersTarget(selectedDriverId);
         setDriverOrdersLoading(false);
-      })
-      .catch(() => {
+      } catch {
         if (!active) return;
         setDriverOrdersLoading(false);
         setDriverOrdersTarget(null);
         toast.error("تعذر تحميل رحلات السائق");
-      });
+      }
+    };
+    fetchDriverOrders();
     return () => {
       active = false;
     };
