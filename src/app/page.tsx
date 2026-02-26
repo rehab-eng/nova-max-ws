@@ -210,6 +210,9 @@ export default function StorePanel() {
   const [walletMethod] = useState("cash");
   const [walletNote, setWalletNote] = useState("");
   const [orders, setOrders] = useState<Order[]>([]);
+  const [driverOrders, setDriverOrders] = useState<Order[]>([]);
+  const [driverOrdersLoading, setDriverOrdersLoading] = useState(false);
+  const [driverOrdersTarget, setDriverOrdersTarget] = useState<string | null>(null);
   const [flashIds, setFlashIds] = useState<Set<string>>(new Set());
   const [activeSection, setActiveSection] = useState<SectionKey>("dashboard");
   const [drivers, setDrivers] = useState<DriverRow[]>([]);
@@ -218,6 +221,7 @@ export default function StorePanel() {
   const [ledgerWallet, setLedgerWallet] = useState<LedgerWalletRow[]>([]);
   const [ledgerDrivers, setLedgerDrivers] = useState<LedgerDriverRow[]>([]);
   const [ledgerPeriod, setLedgerPeriod] = useState("daily");
+  const [selectedDriverId, setSelectedDriverId] = useState<string | null>(null);
   const [realtimeStatus, setRealtimeStatus] = useState<
     "connecting" | "connected" | "disconnected"
   >("disconnected");
@@ -390,6 +394,7 @@ export default function StorePanel() {
   const goToSection = (section: SectionKey) => {
     if (section === "drivers") {
       fetchDrivers();
+      refreshOrders(true);
     }
     if (section === "finance") {
       fetchLedger(ledgerPeriod);
@@ -874,6 +879,66 @@ export default function StorePanel() {
       return (a.name ?? "").localeCompare(b.name ?? "");
     });
   }, [drivers]);
+
+  const selectedDriver = useMemo(
+    () => drivers.find((driver) => driver.id === selectedDriverId) ?? null,
+    [drivers, selectedDriverId]
+  );
+
+  const selectedDriverOrders = useMemo(() => {
+    if (!selectedDriverId) return [];
+    if (driverOrdersTarget === selectedDriverId) return driverOrders;
+    return orders.filter((order) => order.driver_id === selectedDriverId);
+  }, [orders, selectedDriverId, driverOrders, driverOrdersTarget]);
+
+  const deliveredDriverOrders = useMemo(
+    () => selectedDriverOrders.filter((order) => order.status === "delivered"),
+    [selectedDriverOrders]
+  );
+
+  const driverTripsCount = deliveredDriverOrders.length;
+  const driverOrdersCount = selectedDriverOrders.length;
+  const driverEarningsTotal = deliveredDriverOrders.reduce((sum, order) => {
+    const amount = typeof order.price === "number" ? order.price : 0;
+    return sum + amount;
+  }, 0);
+  const driverOrderValueTotal = selectedDriverOrders.reduce((sum, order) => {
+    const price = typeof order.price === "number" ? order.price : 0;
+    const fee = typeof order.delivery_fee === "number" ? order.delivery_fee : 0;
+    return sum + price + fee;
+  }, 0);
+
+  useEffect(() => {
+    if (!selectedDriverId || !adminCode) {
+      setDriverOrders([]);
+      setDriverOrdersTarget(null);
+      setDriverOrdersLoading(false);
+      return;
+    }
+    let active = true;
+    const query = `driver_id=${encodeURIComponent(
+      selectedDriverId
+    )}&admin_code=${encodeURIComponent(adminCode)}&limit=500`;
+    setDriverOrdersLoading(true);
+    fetch(`${API_BASE}/orders?${query}`)
+      .then((res) => res.json())
+      .then((data: ApiResponse<{ orders?: Order[] }>) => {
+        if (!active) return;
+        const list = Array.isArray(data?.orders) ? (data.orders as Order[]) : [];
+        setDriverOrders(list);
+        setDriverOrdersTarget(selectedDriverId);
+        setDriverOrdersLoading(false);
+      })
+      .catch(() => {
+        if (!active) return;
+        setDriverOrdersLoading(false);
+        setDriverOrdersTarget(null);
+        toast.error("تعذر تحميل رحلات السائق");
+      });
+    return () => {
+      active = false;
+    };
+  }, [selectedDriverId, adminCode]);
 
   const inventorySummary = useMemo(() => {
     const toLibyaDate = (value?: string | null) => {
@@ -1706,10 +1771,24 @@ export default function StorePanel() {
                     {sortedDrivers.map((driver) => {
                       const isActive = driver.is_active != 0;
                       const statusLabel = driver.status == "online" ? "متصل" : "غير متصل";
+                      const selected = selectedDriverId === driver.id;
                       return (
                         <div
                           key={driver.id}
-                          className="flex flex-col gap-3 rounded-lg border border-slate-200 px-3 py-3 md:flex-row md:items-center md:justify-between"
+                          onClick={() =>
+                            setSelectedDriverId(selected ? null : driver.id)
+                          }
+                          role="button"
+                          tabIndex={0}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter" || e.key === " ") {
+                              e.preventDefault();
+                              setSelectedDriverId(selected ? null : driver.id);
+                            }
+                          }}
+                          className={`flex cursor-pointer flex-col gap-3 rounded-lg border px-3 py-3 transition md:flex-row md:items-center md:justify-between ${
+                            selected ? "border-orange-300 bg-orange-50/40" : "border-slate-200"
+                          }`}
                         >
                           <div>
                             <p className="text-sm font-semibold text-slate-900">
@@ -1731,7 +1810,10 @@ export default function StorePanel() {
                             </span>
                             <button
                               type="button"
-                              onClick={() => setDriverActive(driver.id, !isActive)}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setDriverActive(driver.id, !isActive);
+                              }}
                               className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
                                 isActive
                                   ? "border border-slate-200 bg-white text-slate-700 hover:border-slate-400"
@@ -1740,12 +1822,165 @@ export default function StorePanel() {
                             >
                               {isActive ? "تعطيل" : "تفعيل"}
                             </button>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setSelectedDriverId(selected ? null : driver.id);
+                              }}
+                              className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:border-slate-400"
+                            >
+                              تفاصيل السائق
+                            </button>
                           </div>
                         </div>
                       );
                     })}
                   </div>
                 </div>
+
+                {selectedDriver && (
+                  <div className="mt-6 rounded-lg border border-slate-200 bg-white p-4">
+                    <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                      <div>
+                        <p className="text-sm font-semibold text-slate-900">
+                          تفاصيل السائق
+                        </p>
+                        <p className="mt-1 text-xs text-slate-500">
+                          كل الرحلات والمحفظة والملخص المالي.
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setSelectedDriverId(null)}
+                        className="text-xs text-slate-500 hover:text-slate-700"
+                      >
+                        إغلاق التفاصيل
+                      </button>
+                    </div>
+
+                    <div className="mt-4 grid gap-3 md:grid-cols-3">
+                      <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3">
+                        <p className="text-xs text-slate-500">الاسم</p>
+                        <p className="mt-1 text-sm font-semibold text-slate-900">
+                          {selectedDriver.name ?? "-"}
+                        </p>
+                      </div>
+                      <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3">
+                        <p className="text-xs text-slate-500">معرّف السائق</p>
+                        <p className="mt-1 text-sm font-semibold text-slate-900">
+                          {selectedDriver.id ?? "-"}
+                        </p>
+                      </div>
+                      <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3">
+                        <p className="text-xs text-slate-500">رقم الهاتف</p>
+                        <p className="mt-1 text-sm font-semibold text-slate-900">
+                          {selectedDriver.phone ?? "-"}
+                        </p>
+                      </div>
+                      <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3">
+                        <p className="text-xs text-slate-500">كود السائق</p>
+                        <p className="mt-1 text-sm font-semibold text-slate-900">
+                          {selectedDriver.driver_code ?? "-"}
+                        </p>
+                      </div>
+                      <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3">
+                        <p className="text-xs text-slate-500">رصيد المحفظة</p>
+                        <p className="mt-1 text-sm font-semibold text-slate-900">
+                          {Number(selectedDriver.wallet_balance || 0).toFixed(2)}
+                        </p>
+                      </div>
+                      <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3">
+                        <p className="text-xs text-slate-500">عدد الرحلات</p>
+                        <p className="mt-1 text-sm font-semibold text-slate-900">
+                          {driverTripsCount}
+                        </p>
+                      </div>
+                      <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3">
+                        <p className="text-xs text-slate-500">إجمالي ما وصله</p>
+                        <p className="mt-1 text-sm font-semibold text-slate-900">
+                          {driverEarningsTotal.toFixed(2)}
+                        </p>
+                      </div>
+                      <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3">
+                        <p className="text-xs text-slate-500">إجمالي قيمة الطلبات</p>
+                        <p className="mt-1 text-sm font-semibold text-slate-900">
+                          {driverOrderValueTotal.toFixed(2)}
+                        </p>
+                      </div>
+                      <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3">
+                        <p className="text-xs text-slate-500">عدد الطلبات</p>
+                        <p className="mt-1 text-sm font-semibold text-slate-900">
+                          {driverOrdersCount}
+                        </p>
+                      </div>
+                      <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3">
+                        <p className="text-xs text-slate-500">الحالة</p>
+                        <p className="mt-1 text-sm font-semibold text-slate-900">
+                          {selectedDriver.status === "online" ? "متصل" : "غير متصل"}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="mt-5">
+                      <p className="text-sm font-semibold text-slate-900">
+                        سجل الرحلات
+                      </p>
+                      {driverOrdersLoading ? (
+                        <div className="mt-3 rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
+                          جاري تحميل رحلات السائق...
+                        </div>
+                      ) : selectedDriverOrders.length === 0 ? (
+                        <div className="mt-3 rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
+                          لا توجد رحلات لهذا السائق بعد.
+                        </div>
+                      ) : (
+                        <div className="mt-3 overflow-x-auto">
+                          <table className="w-full text-right text-sm">
+                            <thead className="text-xs text-slate-500">
+                              <tr>
+                                <th className="py-2">رقم الطلب</th>
+                                <th>المتجر</th>
+                                <th>المستلم</th>
+                                <th>الحالة</th>
+                                <th>الإجمالي</th>
+                                <th>اليوم والوقت</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-200">
+                              {selectedDriverOrders.map((order) => (
+                                <tr key={`driver-order-${order.id}`}>
+                                  <td className="py-3 font-semibold text-slate-900">
+                                    #{formatOrderNumber(order.id)}
+                                  </td>
+                                  <td className="text-slate-700">
+                                    {order.store_name ?? "-"}
+                                  </td>
+                                  <td className="text-slate-700">
+                                    {order.receiver_name ?? order.customer_name ?? "-"}
+                                  </td>
+                                  <td className="text-slate-700">
+                                    {formatStatus(order.status)}
+                                  </td>
+                                  <td className="text-slate-700 font-semibold">
+                                    {formatOrderTotal(order)}
+                                  </td>
+                                  <td className="text-slate-600">
+                                    {formatDateTime(
+                                      order.delivered_at ??
+                                        order.cancelled_at ??
+                                        order.created_at
+                                    )}
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
               </section>
             )}
 
