@@ -1110,8 +1110,8 @@ export default function StorePanel() {
     if (!driverId) return;
     const confirmed = window.confirm(
       nextActive
-        ? "سيتم تفعيل السائق للعودة للعمل. هل تريد المتابعة؟"
-        : "سيتم تعطيل السائق وإيقاف ظهوره في القائمة النشطة. هل تريد المتابعة؟"
+        ? "سيتم تفعيل السائق للعودة للعمل. هل تريد المتابعة"
+        : "سيتم تعطيل السائق وإيقاف ظهوره في القائمة النشطة. هل تريد المتابعة"
     );
     if (!confirmed) return;
 
@@ -1146,7 +1146,7 @@ export default function StorePanel() {
       toast.error("رمز المنظومة مطلوب");
       return;
     }
-    const confirmed = window.confirm("سيتم إعادة الطلب إلى حالة الانتظار. هل تريد المتابعة؟");
+    const confirmed = window.confirm("سيتم إعادة الطلب إلى حالة الانتظار. هل تريد المتابعة");
     if (!confirmed) return;
 
     const toastId = toast.loading("جاري إعادة تفعيل الطلب...");
