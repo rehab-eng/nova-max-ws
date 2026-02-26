@@ -393,9 +393,10 @@ export default function StorePanel() {
     }
     if (section === "finance") {
       fetchLedger(ledgerPeriod);
+      refreshOrders(true);
     }
     if (section === "orders" || section === "inventory" || section === "create_order") {
-      refreshOrders();
+      refreshOrders(true);
     }
     setActiveSection(section);
     if (typeof window !== "undefined") {
@@ -844,6 +845,10 @@ export default function StorePanel() {
   }, [orders]);
 
   const recentOrders = useMemo(() => sortedOrders.slice(0, 5), [sortedOrders]);
+  const financeDeliveredOrders = useMemo(
+    () => sortedOrders.filter((order) => order.status === "delivered"),
+    [sortedOrders]
+  );
 
   const activeDriversCount = useMemo(
     () => drivers.filter((driver) => driver.is_active !== 0).length,
@@ -2176,6 +2181,78 @@ export default function StorePanel() {
                         {inventorySummary.yearCount}
                       </p>
                     </div>
+                  </div>
+                )}
+
+                {adminCode && (
+                  <div className="mt-6 rounded-lg border border-slate-200 bg-white p-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-semibold text-slate-900">
+                          تفاصيل الطلبات المالية
+                        </p>
+                        <p className="mt-1 text-xs text-slate-500">
+                          اسم صاحب الطلب وقيمته الإجمالية عند التسليم.
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => refreshOrders(true)}
+                        className="inline-flex items-center gap-2 text-xs text-slate-500"
+                      >
+                        <RefreshCw className="h-4 w-4" />
+                        تحديث
+                      </button>
+                    </div>
+
+                    {!storeId && (
+                      <div className="mt-3 rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
+                        اختر متجرًا من قائمة المتاجر لعرض التفاصيل المالية.
+                      </div>
+                    )}
+
+                    {storeId && financeDeliveredOrders.length === 0 && (
+                      <div className="mt-3 rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
+                        لا توجد طلبات مسلّمة بعد.
+                      </div>
+                    )}
+
+                    {storeId && financeDeliveredOrders.length > 0 && (
+                      <div className="mt-4 overflow-x-auto">
+                        <table className="w-full text-right text-sm">
+                          <thead className="text-xs text-slate-500">
+                            <tr>
+                              <th className="py-2">رقم الطلب</th>
+                              <th>صاحب الطلب</th>
+                              <th>المستلم</th>
+                              <th>الإجمالي</th>
+                              <th>وقت التسليم</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-slate-200">
+                            {financeDeliveredOrders.map((order) => (
+                              <tr key={`finance-${order.id}`}>
+                                <td className="py-3 font-semibold text-slate-900">
+                                  #{formatOrderNumber(order.id)}
+                                </td>
+                                <td className="text-slate-700">
+                                  {order.driver_name ?? formatDriverDisplay(order.driver_id)}
+                                </td>
+                                <td className="text-slate-700">
+                                  {order.receiver_name ?? order.customer_name ?? "-"}
+                                </td>
+                                <td className="text-slate-700 font-semibold">
+                                  {formatOrderTotal(order)}
+                                </td>
+                                <td className="text-slate-600">
+                                  {formatDateTime(order.delivered_at ?? order.created_at)}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
                   </div>
                 )}
               </section>
