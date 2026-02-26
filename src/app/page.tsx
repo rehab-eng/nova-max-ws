@@ -137,13 +137,13 @@ function getErrorMessage(data: { error?: string } | null | undefined, fallback: 
 }
 
 const payoutLabels: Record<string, string> = {
-  wallet: "محفظة محلية",
   cash: "كاش",
 };
 
 function formatPayout(value: string | null | undefined): string {
-  if (!value) return "-";
-  return payoutLabels[value] ?? value;
+  if (!value) return "كاش";
+  if (value === "wallet") return "كاش";
+  return payoutLabels[value] ?? "كاش";
 }
 
 function formatDate(value?: string | null): string {
@@ -207,7 +207,7 @@ export default function StorePanel() {
   const [driverCode, setDriverCode] = useState<string | null>(null);
   const [walletDriverId, setWalletDriverId] = useState("");
   const [walletAmount, setWalletAmount] = useState("");
-  const [walletMethod, setWalletMethod] = useState("wallet");
+  const [walletMethod] = useState("cash");
   const [walletNote, setWalletNote] = useState("");
   const [orders, setOrders] = useState<Order[]>([]);
   const [flashIds, setFlashIds] = useState<Set<string>>(new Set());
@@ -1783,14 +1783,9 @@ export default function StorePanel() {
                           value={walletAmount}
                           onChange={(e) => setWalletAmount(e.target.value)}
                         />
-                        <select
-                          className="h-11 rounded-lg border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-slate-400"
-                          value={walletMethod}
-                          onChange={(e) => setWalletMethod(e.target.value)}
-                        >
-                          <option value="wallet">محفظة محلية</option>
-                          <option value="cash">كاش</option>
-                        </select>
+                        <div className="h-11 rounded-lg border border-slate-200 bg-slate-50 px-4 text-sm text-slate-900 flex items-center">
+                          كاش
+                        </div>
                         <input
                           className="h-11 rounded-lg border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-slate-400"
                           placeholder="ملاحظة (اختياري)"
