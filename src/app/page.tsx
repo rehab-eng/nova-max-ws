@@ -1196,7 +1196,7 @@ export default function StorePanel() {
       customer_location_text: formData.get("customer_location_text"),
       order_type: formData.get("order_type"),
       receiver_name: receiverName,
-      payout_method: formData.get("payout_method"),
+      payout_method: "cash",
       price: formData.get("total_amount"),
       delivery_fee: 0,
     };
@@ -1972,18 +1972,14 @@ export default function StorePanel() {
                     className="h-11 rounded-lg border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-slate-400"
                     placeholder="الإجمالي"
                   />
-                  <select
-                    name="payout_method"
-                    className="h-11 rounded-lg border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-slate-400"
-                    defaultValue=""
-                    required
-                  >
-                    <option value="" disabled>
-                      اختر طريقة الدفع
-                    </option>
-                    <option value="wallet">محفظة محلية</option>
-                    <option value="cash">كاش</option>
-                  </select>
+                  <div className="grid gap-1">
+                    <label className="text-xs font-semibold text-slate-500">
+                      طريقة الدفع
+                    </label>
+                    <div className="h-11 rounded-lg border border-slate-200 bg-slate-50 px-4 text-sm text-slate-900 flex items-center">
+                      كاش
+                    </div>
+                  </div>
                   <input
                     name="driver_code"
                     className="h-11 rounded-lg border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-slate-400 md:col-span-2"
