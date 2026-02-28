@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://nova-max-ws.pages.dev"),
   title: {
     default: "Nova Max | ???? ???? ??????",
     template: "%s | Nova Max",
