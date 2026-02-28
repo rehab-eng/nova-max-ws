@@ -1335,7 +1335,7 @@ export default function StorePanel() {
               </div>
               <div className="text-right">
                 <p className="text-[11px] tracking-[0.35em] text-slate-400">NOVA MAX</p>
-                <h1 className="text-xl font-semibold">بوابة المتاجر</h1>
+                <h1 className="text-xl font-semibold">لوحة تحكم المتجر</h1>
                 <p className="mt-1 text-sm text-slate-500">
                   أدخل كود الإدارة للمتابعة.
                 </p>
@@ -1362,7 +1362,7 @@ export default function StorePanel() {
 
             <div className="mt-5 flex items-center justify-between text-[11px] text-slate-400">
               <span>Nova Max</span>
-              <span>لوحة المتاجر الرسمية</span>
+              <span>لوحة تحكم المتجر</span>
             </div>
           </div>
         </div>
