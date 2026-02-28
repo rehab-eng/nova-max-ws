@@ -21,7 +21,7 @@ export const metadata: Metadata = {
     locale: "ar_LY",
     images: [
       {
-        url: "/logo.webp",
+        url: "/logo.png",
         width: 512,
         height: 512,
         alt: "Nova Max",
@@ -32,7 +32,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "Nova Max | ???? ???? ??????",
     description: "???? ???? ?????? ??????? Nova Max ?????????.",
-    images: ["/logo.webp"],
+    images: ["/logo.png"],
   },
   manifest: "/manifest.webmanifest",
   icons: {
